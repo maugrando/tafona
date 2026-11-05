@@ -1,0 +1,9 @@
+services:
+  tafona:
+    build: .
+    container_name: tafona-rotulos
+    restart: unless-stopped
+    volumes:
+      - ./dados:/dados          # banco SQLite (cortes + histórico) — entra no backup
+    ports:
+      - "127.0.0.1:8090:8000"   # só o Nginx do servidor enxerga

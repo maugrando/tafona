@@ -1,0 +1,54 @@
+[
+  {
+    "nome": "Picanha",
+    "por_boi": 2
+  },
+  {
+    "nome": "Maminha",
+    "por_boi": 2
+  },
+  {
+    "nome": "Vazio",
+    "por_boi": 2
+  },
+  {
+    "nome": "Entrecot",
+    "por_boi": 8
+  },
+  {
+    "nome": "Filé mignon",
+    "por_boi": 2
+  },
+  {
+    "nome": "Paleta",
+    "por_boi": 20
+  },
+  {
+    "nome": "Ponta de Peito",
+    "por_boi": 4
+  },
+  {
+    "nome": "Costela",
+    "por_boi": 16
+  },
+  {
+    "nome": "Matambre",
+    "por_boi": 2
+  },
+  {
+    "nome": "Guisado (moída)",
+    "por_boi": 40
+  },
+  {
+    "nome": "Carne Frita",
+    "por_boi": 30
+  },
+  {
+    "nome": "Bife",
+    "por_boi": 30
+  },
+  {
+    "nome": "Rabo",
+    "por_boi": 1
+  }
+]

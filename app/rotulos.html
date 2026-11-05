@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Rótulos · Tafona</title>
+<link rel="manifest" href="/rotulos/manifest.json">
+<link rel="icon" href="/rotulos/icone.png">
+<meta name="theme-color" content="#2f4a2a">
+<script src="/rotulos/niimbluelib.js"></script>
+<style>
+  :root { --verde:#2f4a2a; --verde2:#4b6b3f; --creme:#f3efe4; --carne:#9b2c1f; --cinza:#6b6b6b; --borda:#d8d2c2; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; font-family: system-ui, -apple-system, Roboto, sans-serif; background: var(--creme); color:#1d1d1d; padding-bottom: 92px; }
+  header { position: sticky; top:0; z-index:5; background: var(--verde); color:#fff; padding: 10px 14px 12px; box-shadow: 0 2px 8px #0003; }
+  .linha { display:flex; align-items:center; gap:10px; }
+  .titulo { font-weight:800; font-size:20px; flex:1; }
+  .imp { display:flex; align-items:center; gap:8px; font-size:14px; }
+  .bola { width:12px; height:12px; border-radius:50%; background:#d33; box-shadow:0 0 0 2px #fff4; }
+  .bola.on { background:#4ade80; }
+  .btn-con { background:#fff; color:var(--verde); border:0; border-radius:10px; font-weight:800; padding:10px 14px; font-size:15px; }
+  .datas { display:flex; gap:8px; margin-top:10px; }
+  .chip { flex:1; border:2px solid #fff6; background:transparent; color:#fff; border-radius:12px; padding:10px 4px; font-size:16px; font-weight:700; line-height:1.15; }
+  .chip small { display:block; font-weight:500; font-size:13px; opacity:.85; }
+  .chip.sel { background:#fff; color:var(--verde); border-color:#fff; }
+  main { padding: 14px; max-width: 900px; margin: 0 auto; }
+  .aba { display:none; } .aba.ativa { display:block; }
+  h2 { margin: 4px 0 12px; font-size: 20px; color: var(--verde); }
+  .card { background:#fff; border-radius:14px; padding:14px; box-shadow:0 1px 4px #0001; margin-bottom:12px; }
+  .contador { display:flex; align-items:center; justify-content:center; gap:14px; }
+  .contador .n { font-size:64px; font-weight:900; min-width:110px; text-align:center; color:var(--carne); }
+  .contador .rot { text-align:center; color:var(--cinza); font-size:15px; margin-top:-6px; }
+  .botoes { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:10px; }
+  .b { border:0; border-radius:12px; font-size:20px; font-weight:800; padding:14px 0; min-width:68px; background:#e9e4d6; color:#222; }
+  .b:active { transform: scale(.96); }
+  .b.menos { background:#f1dcd8; color:var(--carne); }
+  .b.zera { background:#eee; color:#555; font-size:16px; }
+  table { width:100%; border-collapse: collapse; font-size:17px; }
+  td { padding:8px 4px; border-bottom:1px solid #eee; }
+  td.q { text-align:right; font-weight:800; white-space:nowrap; }
+  .vazio { color: var(--cinza); text-align:center; padding: 18px; }
+  .grade { display:grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap:10px; }
+  .corte { position:relative; border:2px solid var(--borda); background:#fff; border-radius:14px; padding:16px 10px; min-height:84px; font-size:18px; font-weight:800; text-align:center; color:#222; }
+  .corte.sel { border-color: var(--carne); box-shadow: 0 0 0 3px #9b2c1f33; }
+  .corte .qtd { position:absolute; top:-10px; right:-8px; background:var(--carne); color:#fff; border-radius:999px; min-width:34px; padding:4px 8px; font-size:16px; }
+  .barra-qtd { position: sticky; bottom: 88px; background:#fff; border-radius:14px; padding:10px; box-shadow:0 -2px 12px #0002; margin-top:14px; }
+  .barra-qtd .nome { text-align:center; font-weight:800; margin-bottom:4px; }
+  .rodape { position:fixed; left:0; right:0; bottom:0; background:#fff; box-shadow:0 -2px 10px #0002; padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); z-index:6; }
+  .tabs { display:flex; gap:4px; }
+  .tab { flex:1; border:0; background:transparent; padding:8px 2px; font-size:13px; font-weight:700; color:#777; border-radius:10px; }
+  .tab .ic { display:block; font-size:22px; }
+  .tab.ativa { background: #e8efe4; color: var(--verde); }
+  .imprimir { width:100%; border:0; border-radius:14px; background:var(--carne); color:#fff; font-size:22px; font-weight:900; padding:18px; margin-top:6px; }
+  .imprimir:disabled { background:#c9b8b4; }
+  .resumo { text-align:center; color:var(--cinza); margin-top:8px; font-size:15px; }
+  .lc { display:flex; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid #eee; }
+  .lc .nm { flex:1; font-size:18px; font-weight:700; }
+  .lc.inativo .nm { color:#aaa; text-decoration: line-through; }
+  .mini { border:0; border-radius:10px; background:#e9e4d6; font-size:18px; font-weight:800; width:44px; height:44px; }
+  .mini.t { width:auto; padding:0 10px; font-size:14px; }
+  .pb { min-width:34px; text-align:center; font-weight:900; font-size:20px; color:var(--carne); }
+  .novo { display:flex; gap:8px; margin-top:12px; }
+  .novo input { flex:1; font-size:18px; padding:12px; border-radius:10px; border:2px solid var(--borda); }
+  .novo button { border:0; border-radius:10px; background:var(--verde); color:#fff; font-weight:800; font-size:16px; padding:0 16px; }
+  .hist { padding:10px 0; border-bottom:1px solid #eee; font-size:15px; }
+  .hist b { font-size:16px; }
+  .hist .det { color:var(--cinza); margin-top:2px; }
+  .ajuda p, .ajuda li { font-size:17px; line-height:1.45; }
+  .ajuda h3 { color: var(--verde); margin: 18px 0 6px; }
+  dialog { border:0; border-radius:16px; padding:18px; width:min(440px, 94vw); }
+  dialog::backdrop { background:#0007; }
+  .previas { display:flex; flex-direction:column; align-items:center; gap:8px; margin:12px 0; }
+  canvas.previa { width: 240px; height: 150px; image-rendering: pixelated; border: 1px solid #ccc; background:#fff; }
+  .acoes { display:flex; gap:10px; }
+  .acoes button { flex:1; border:0; border-radius:12px; font-size:18px; font-weight:800; padding:14px; }
+  .ok { background: var(--carne); color:#fff; } .nao { background:#eee; }
+  .aviso { background:#fff4d6; border-radius:12px; padding:10px 12px; font-size:15px; margin-bottom:12px; }
+  #toast { position:fixed; left:50%; transform:translateX(-50%); bottom:110px; background:#222; color:#fff; padding:12px 18px; border-radius:12px; font-size:16px; display:none; z-index:20; max-width:90vw; text-align:center; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="linha">
+    <div class="titulo">Rótulos · Tafona</div>
+    <div class="imp"><span class="bola" id="bola"></span><span id="impTxt">B1 desligada</span></div>
+    <button class="btn-con" id="btnCon" onclick="conectar()">Conectar</button>
+  </div>
+  <div class="datas" id="datas"></div>
+</header>
+
+<main>
+  <!-- ======================= BOI INTEIRO ======================= -->
+  <section class="aba ativa" id="aba-boi">
+    <div class="card">
+      <div class="contador">
+        <div><div class="n" id="nBois">1</div><div class="rot" id="rotBois">boi</div></div>
+      </div>
+      <div class="botoes">
+        <button class="b menos" onclick="bois(-1)">−1</button>
+        <button class="b" onclick="bois(1)">+1</button>
+        <button class="b" onclick="bois(5)">+5</button>
+        <button class="b" onclick="bois(10)">+10</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Kit que vai sair</h2>
+      <table id="tabKit"></table>
+    </div>
+  </section>
+
+  <!-- ======================= AVULSAS ======================= -->
+  <section class="aba" id="aba-avulsa">
+    <h2>Toque no corte para somar</h2>
+    <div class="grade" id="gradeAvulsa"></div>
+    <div class="barra-qtd" id="barraQtd" style="display:none">
+      <div class="nome" id="selNome"></div>
+      <div class="botoes" style="margin-top:4px">
+        <button class="b menos" onclick="somaSel(-1)">−1</button>
+        <button class="b" onclick="somaSel(1)">+1</button>
+        <button class="b" onclick="somaSel(5)">+5</button>
+        <button class="b" onclick="somaSel(10)">+10</button>
+        <button class="b zera" onclick="zerarAvulsas()">Zerar tudo</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= CORTES ======================= -->
+  <section class="aba" id="aba-cortes">
+    <div class="card">
+      <h2>Cortes e etiquetas por boi</h2>
+      <div class="aviso">O número em vermelho é quantas etiquetas aquele corte leva <b>por boi</b>. Corte com 0 não entra no kit do boi inteiro, mas continua nas avulsas.</div>
+      <div id="listaCortes"></div>
+      <div class="novo">
+        <input id="novoNome" placeholder="Novo corte (ex.: Picanha)" maxlength="60">
+        <button onclick="novoCorte()">Adicionar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= HISTÓRICO ======================= -->
+  <section class="aba" id="aba-hist">
+    <div class="card"><h2>Últimas impressões</h2><div id="listaHist"><div class="vazio">Carregando…</div></div></div>
+  </section>
+
+  <!-- ======================= FUNCIONAMENTO ======================= -->
+  <section class="aba ajuda" id="aba-ajuda">
+    <div class="card">
+      <h2>Como funciona</h2>
+      <p>Este app imprime as etiquetas de carneação na <b>NIIMBOT B1</b>, direto do tablet/celular pelo Bluetooth. Cada etiqueta 50×30 sai com <b>duas metades</b>: corte ao meio com a tesoura e cada metade vai num pacote. Em cada metade vai o <b>nome do corte</b> e a <b>data de abate</b>.</p>
+      <h3>Antes de começar</h3>
+      <ul>
+        <li>Use o <b>Chrome do Android</b> (no iPhone não funciona).</li>
+        <li>Ligue o <b>Bluetooth</b> e a <b>Localização</b> do aparelho.</li>
+        <li>Ligue a B1 e toque em <b>Conectar</b> lá em cima. Escolha a B1 na lista. A bolinha fica verde.</li>
+        <li>Precisa conectar uma vez cada vez que abre o app.</li>
+      </ul>
+      <h3>1. Escolha a data de abate</h3>
+      <p>No topo: <b>Ontem</b>, <b>Hoje</b> ou <b>Amanhã</b>. Ela vale para tudo que for impresso.</p>
+      <h3>2a. Boi inteiro</h3>
+      <p>Diga quantos bois foram carneados com os botões −1 / +1 / +5 / +10. O app monta o kit inteiro (todos os cortes, na quantidade cadastrada por boi) e mostra quantas etiquetas e folhas vão sair. Toque em <b>Imprimir</b>.</p>
+      <p>As etiquetas saem <b>agrupadas por corte</b> (todas as picanhas juntas, depois todas as alcatras…), para facilitar separar.</p>
+      <h3>2b. Avulsas</h3>
+      <p>Para imprimir só alguns cortes: toque no corte (cada toque soma 1) e use −1 / +1 / +5 / +10 para ajustar o corte selecionado. Dá para misturar vários cortes numa impressão. <b>Zerar tudo</b> limpa.</p>
+      <h3>3. Conferir e imprimir</h3>
+      <p>Antes de imprimir aparece a prévia das primeiras folhas. Confere e toca <b>Imprimir</b>. Se o total de metades for ímpar, a última metade repete a etiqueta anterior (sobra uma).</p>
+      <h3>Cortes</h3>
+      <p>Na aba <b>Cortes</b> você cadastra os cortes, quantas etiquetas cada um leva por boi (−/+), muda a ordem (▲▼), troca o nome (toque no nome) e desativa os que não usa mais.</p>
+      <h3>Acesso</h3>
+      <p>Não tem senha. Aparelho novo pede acesso ao abrir o link e o Mau libera pela notificação que recebe.</p>
+      <h3>Histórico</h3>
+      <p>Tudo que sai na impressora fica anotado com data de abate, quantidade de bois e cortes. Se aparecer "não anotou no sistema", as etiquetas já saíram: <b>não reimprima</b>.</p>
+      <h3>Se der problema</h3>
+      <ul>
+        <li><b>Não conecta:</b> confira Bluetooth e Localização, desligue e ligue a B1, toque Conectar de novo.</li>
+        <li><b>Imagem girada ou cortada:</b> confira se o rolo é 50×30 com espaço entre etiquetas.</li>
+        <li><b>Travou no meio:</b> desligue e ligue a B1, conecte de novo e imprima só o que faltou pelas Avulsas.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<div class="rodape">
+  <div id="areaImprimir">
+    <button class="imprimir" id="btnImp" onclick="pedirImpressao()">Imprimir</button>
+    <div class="resumo" id="resumo"></div>
+  </div>
+  <div class="tabs" style="margin-top:8px">
+    <button class="tab ativa" data-aba="boi" onclick="aba('boi')"><span class="ic">🐂</span>Boi inteiro</button>
+    <button class="tab" data-aba="avulsa" onclick="aba('avulsa')"><span class="ic">🥩</span>Avulsas</button>
+    <button class="tab" data-aba="cortes" onclick="aba('cortes')"><span class="ic">📋</span>Cortes</button>
+    <button class="tab" data-aba="hist" onclick="aba('hist')"><span class="ic">🕘</span>Histórico</button>
+    <button class="tab" data-aba="ajuda" onclick="aba('ajuda')"><span class="ic">❔</span>Como usar</button>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <h2 style="margin-top:0">Conferir</h2>
+  <div id="dlgTxt"></div>
+  <div class="previas" id="previas"></div>
+  <div class="acoes"><button class="nao" onclick="dlg.close()">Voltar</button><button class="ok" id="dlgOk">Imprimir</button></div>
+</dialog>
+<div id="toast"></div>
+
+<script>
+// ============================================================ estado
+let cortes = [];                 // {id, nome, por_boi, ordem, ativo}
+let abaAtual = 'boi';
+let nBois = 1;
+let avulsas = {};                // corte_id -> qtd
+let selAvulsa = null;
+let diaOffset = 0;               // -1 ontem, 0 hoje, 1 amanhã
+let imprimindo = false;
+
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, '0');
+function dataBase() { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + diaOffset); return d; }
+const dataTexto = d => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(d.getFullYear()).slice(2)}`;
+const dataISO = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const ativos = () => cortes.filter(c => c.ativo);
+
+function toast(msg, ms = 3000) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', ms); }
+
+async function api(url, corpo) {
+  const r = await fetch(url, corpo === undefined ? { credentials: 'same-origin' } : {
+    method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+  if (r.status === 401 || r.status === 403) { location.reload(); throw new Error('acesso expirou'); }
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erro || r.status);
+  return r.json();
+}
+
+// ============================================================ datas
+function desenharDatas() {
+  const nomes = { '-1': 'Ontem', '0': 'Hoje', '1': 'Amanhã' };
+  $('datas').innerHTML = [-1, 0, 1].map(o => {
+    const d = new Date(); d.setDate(d.getDate() + o);
+    return `<button class="chip ${o === diaOffset ? 'sel' : ''}" onclick="escolherDia(${o})">${nomes[o]}<small>${dataTexto(d)}</small></button>`;
+  }).join('');
+}
+function escolherDia(o) { diaOffset = o; desenharDatas(); atualizar(); }
+
+// ============================================================ abas
+function aba(nome) {
+  abaAtual = nome;
+  document.querySelectorAll('.aba').forEach(s => s.classList.toggle('ativa', s.id === 'aba-' + nome));
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('ativa', b.dataset.aba === nome));
+  $('areaImprimir').style.display = (nome === 'boi' || nome === 'avulsa') ? '' : 'none';
+  if (nome === 'hist') carregarHistorico();
+  atualizar();
+}
+
+// ============================================================ itens a imprimir
+// devolve [{corte, qtd}] do modo atual
+function itensAtuais() {
+  if (abaAtual === 'boi') return ativos().filter(c => c.por_boi > 0).map(c => ({ corte: c.nome, qtd: c.por_boi * nBois }));
+  return ativos().filter(c => avulsas[c.id] > 0).map(c => ({ corte: c.nome, qtd: avulsas[c.id] }));
+}
+function contar(itens) {
+  const etiquetas = itens.reduce((s, i) => s + i.qtd, 0);
+  return { etiquetas, folhas: Math.ceil(etiquetas / 2) };
+}
+
+function atualizar() {
+  // boi inteiro
+  $('nBois').textContent = nBois;
+  $('rotBois').textContent = nBois === 1 ? 'boi' : 'bois';
+  const kit = ativos().filter(c => c.por_boi > 0);
+  $('tabKit').innerHTML = kit.length
+    ? kit.map(c => `<tr><td>${esc(c.nome)}</td><td class="q">${c.por_boi} × ${nBois} = ${c.por_boi * nBois}</td></tr>`).join('')
+    : `<tr><td class="vazio">Nenhum corte com etiqueta por boi. Cadastre na aba Cortes.</td></tr>`;
+
+  // avulsas
+  $('gradeAvulsa').innerHTML = ativos().length
+    ? ativos().map(c => `<button class="corte ${selAvulsa === c.id ? 'sel' : ''}" onclick="tocarCorte(${c.id})">${esc(c.nome)}${avulsas[c.id] ? `<span class="qtd">${avulsas[c.id]}</span>` : ''}</button>`).join('')
+    : `<div class="vazio">Cadastre os cortes na aba Cortes.</div>`;
+  const sel = cortes.find(c => c.id === selAvulsa);
+  $('barraQtd').style.display = sel ? '' : 'none';
+  if (sel) $('selNome').textContent = `${sel.nome}: ${avulsas[sel.id] || 0}`;
+
+  // rodapé
+  const { etiquetas, folhas } = contar(itensAtuais());
+  $('btnImp').disabled = etiquetas === 0 || imprimindo;
+  $('btnImp').textContent = imprimindo ? 'Imprimindo…' : (etiquetas ? `Imprimir ${folhas} ${folhas === 1 ? 'folha' : 'folhas'}` : 'Imprimir');
+  $('resumo').textContent = etiquetas ? `${etiquetas} etiquetas · abate ${dataTexto(dataBase())}${etiquetas % 2 ? ' · sobra 1' : ''}` : 'Nada para imprimir';
+}
+
+function bois(d) { nBois = Math.max(1, nBois + d); atualizar(); }
+function tocarCorte(id) {
+  if (selAvulsa === id) avulsas[id] = (avulsas[id] || 0) + 1;
+  else { selAvulsa = id; if (!avulsas[id]) avulsas[id] = 1; }
+  atualizar();
+}
+function somaSel(d) { if (selAvulsa == null) return; avulsas[selAvulsa] = Math.max(0, (avulsas[selAvulsa] || 0) + d); atualizar(); }
+function zerarAvulsas() { avulsas = {}; selAvulsa = null; atualizar(); }
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+// ============================================================ desenho da etiqueta
+// meia etiqueta: 384 × 120 px (50 × 15 mm a 8 px/mm). Linha 1: corte. Linha 2: data de abate.
+function desenharMetade(g, it, y) {
+  const W = 384, m = 12;
+  g.fillStyle = '#000'; g.textBaseline = 'middle'; g.textAlign = 'center';
+  const nome = it.corte.toUpperCase();
+  let tam = 52; g.font = `bold ${tam}px Arial`;
+  while (g.measureText(nome).width > W - 2 * m && tam > 26) { tam -= 2; g.font = `bold ${tam}px Arial`; }
+  if (g.measureText(nome).width > W - 2 * m) {
+    // ainda não coube: quebra em duas linhas menores
+    const palavras = nome.split(' '); let l1 = '', l2 = '';
+    for (const p of palavras) { const t = l1 ? l1 + ' ' + p : p; g.font = 'bold 26px Arial'; if (!l2 && g.measureText(t).width <= W - 2 * m) l1 = t; else l2 = l2 ? l2 + ' ' + p : p; }
+    g.font = 'bold 26px Arial'; g.fillText(l1, W / 2, y + 22); g.fillText(l2, W / 2, y + 50, W - 2 * m);
+  } else {
+    g.fillText(nome, W / 2, y + 36);
+  }
+  g.font = 'bold 34px Arial';
+  g.fillText('ABATE ' + it.data, W / 2, y + 90);
+}
+
+function folha(a, b) {           // uma etiqueta 50×30 = duas metades
+  const c = document.createElement('canvas'); c.width = 384; c.height = 240;
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 384, 240);
+  desenharMetade(g, a, 0); desenharMetade(g, b, 120);
+  g.fillStyle = '#000'; for (let x = 0; x < 384; x += 16) g.fillRect(x, 119, 8, 2); // tracejado de corte
+  return c;
+}
+
+function montarFolhas(itens) {
+  const data = dataTexto(dataBase());
+  const metades = [];
+  for (const i of itens) for (let k = 0; k < i.qtd; k++) metades.push({ corte: i.corte, data });
+  if (metades.length % 2) metades.push(metades[metades.length - 1]);
+  const folhas = [];
+  for (let k = 0; k < metades.length; k += 2) folhas.push(folha(metades[k], metades[k + 1]));
+  return folhas;
+}
+
+// ============================================================ impressora
+let cliente = null;
+function status(txt, on) { $('impTxt').textContent = txt; $('bola').classList.toggle('on', !!on); $('btnCon').style.display = on ? 'none' : ''; }
+
+async function conectar() {
+  if (!navigator.bluetooth) { alert('Esse navegador não tem Bluetooth. Usa o Chrome do Android.'); return false; }
+  if (typeof niimbluelib === 'undefined') { alert('A biblioteca da impressora não carregou. Recarrega a página.'); return false; }
+  try {
+    if (cliente && cliente.isConnected && cliente.isConnected()) return true;
+    cliente = new niimbluelib.NiimbotBluetoothClient();
+    cliente.on('disconnect', () => status('B1 desligada', false));
+    status('Conectando…', false);
+    const info = await cliente.connect();
+    status((info.deviceName || 'B1') + ' ok', true);
+    return true;
+  } catch (e) {
+    status('Não conectou', false); toast('Não conectou: ' + (e.message || e), 5000);
+    cliente = null; return false;
+  }
+}
+
+async function imprimirNaB1(folhas) {
+  if (!(await conectar())) throw new Error('impressora não conectada');
+  const tipo = cliente.getPrintTaskType() || 'B1';
+  const dir = (cliente.getModelMetadata() || {}).printDirection || 'top';
+  const tarefa = cliente.protocol.newPrintTask(tipo, { totalPages: folhas.length, density: 3, labelType: niimbluelib.LabelType.WithGaps });
+  try {
+    await tarefa.printInit();
+    let n = 0;
+    for (const c of folhas) {
+      await tarefa.printPage(niimbluelib.ImageEncoder.encodeCanvas(c, niimbluelib.PageColorType.SingleColor, dir), 1);
+      if (tarefa.waitForPageFinished) await tarefa.waitForPageFinished();
+      n++; $('btnImp').textContent = `Imprimindo ${n}/${folhas.length}…`;
+    }
+    await tarefa.waitForFinished();
+  } finally { await cliente.protocol.printEnd(); }   // sempre fecha, senão a B1 trava na próxima
+}
+
+// ============================================================ fluxo de impressão
+const dlg = $('dlg');
+function pedirImpressao() {
+  const itens = itensAtuais(); const { etiquetas, folhas } = contar(itens);
+  if (!etiquetas) return;
+  const fs = montarFolhas(itens);
+  const quem = abaAtual === 'boi' ? `<b>${nBois} ${nBois === 1 ? 'boi' : 'bois'}</b> · ` : '';
+  $('dlgTxt').innerHTML = `${quem}<b>${etiquetas}</b> etiquetas em <b>${folhas}</b> ${folhas === 1 ? 'folha' : 'folhas'}<br>Abate <b>${dataTexto(dataBase())}</b>` + (fs.length > 2 ? '<br><small>Prévia das 2 primeiras folhas:</small>' : '');
+  $('previas').innerHTML = ''; fs.slice(0, 2).forEach(c => { c.className = 'previa'; $('previas').appendChild(c); });
+  $('dlgOk').onclick = () => { dlg.close(); imprimir(itens, folhas); };
+  dlg.showModal();
+}
+
+async function imprimir(itens, nFolhas) {
+  if (imprimindo) return;
+  imprimindo = true; atualizar();
+  const modo = abaAtual;
+  const registro = { modo, data_abate: dataISO(dataBase()), bois: modo === 'boi' ? nBois : null, itens, ...contar(itens) };
+  try {
+    await imprimirNaB1(montarFolhas(itens));
+  } catch (e) {
+    imprimindo = false; atualizar();
+    toast('Não imprimiu: ' + (e.message || e), 6000); return;
+  }
+  imprimindo = false;
+  if (modo === 'avulsa') zerarAvulsas(); else atualizar();
+  try { await api('/api/rotulos', registro); toast(`✓ ${registro.etiquetas} etiquetas impressas`); }
+  catch (e) { toast('Imprimiu, mas não anotou no sistema. Não reimprima.', 7000); }
+}
+
+// ============================================================ cadastro de cortes
+function desenharCortes() {
+  $('listaCortes').innerHTML = cortes.length ? cortes.map((c, i) => `
+    <div class="lc ${c.ativo ? '' : 'inativo'}">
+      <div class="nm" onclick="renomear(${c.id})">${esc(c.nome)}</div>
+      ${c.ativo ? `<button class="mini" onclick="porBoi(${c.id},-1)">−</button><span class="pb">${c.por_boi}</span><button class="mini" onclick="porBoi(${c.id},1)">+</button>` : ''}
+      <button class="mini" onclick="mover(${c.id},-1)" ${i === 0 ? 'disabled' : ''}>▲</button>
+      <button class="mini" onclick="mover(${c.id},1)" ${i === cortes.length - 1 ? 'disabled' : ''}>▼</button>
+      <button class="mini t" onclick="alternar(${c.id})">${c.ativo ? 'Desativar' : 'Ativar'}</button>
+    </div>`).join('') : '<div class="vazio">Nenhum corte cadastrado ainda.</div>';
+}
+async function salvar(corpo) { try { cortes = (await api('/api/cortes', corpo)).cortes; desenharCortes(); atualizar(); } catch (e) { toast('Não salvou: ' + e.message); } }
+function porBoi(id, d) { const c = cortes.find(x => x.id === id); salvar({ id, por_boi: Math.max(0, c.por_boi + d) }); }
+function alternar(id) { const c = cortes.find(x => x.id === id); salvar({ id, ativo: !c.ativo }); }
+function renomear(id) { const c = cortes.find(x => x.id === id); const n = prompt('Nome do corte:', c.nome); if (n && n.trim()) salvar({ id, nome: n.trim() }); }
+function novoCorte() { const n = $('novoNome').value.trim(); if (!n) return; $('novoNome').value = ''; salvar({ nome: n, por_boi: 1 }); }
+async function mover(id, dir) { try { cortes = (await api('/api/cortes/mover', { id, dir })).cortes; desenharCortes(); atualizar(); } catch (e) { toast('Não moveu: ' + e.message); } }
+
+// ============================================================ histórico
+async function carregarHistorico() {
+  try {
+    const { impressoes } = await api('/api/historico');
+    $('listaHist').innerHTML = impressoes.length ? impressoes.map(h => {
+      const [a, m, d] = h.data_abate.split('-');
+      const quem = h.modo === 'boi' ? `${h.bois} ${h.bois === 1 ? 'boi' : 'bois'}` : 'Avulsas';
+      return `<div class="hist"><b>${quem}</b> · abate ${d}/${m}/${a.slice(2)} · ${h.etiquetas} etiquetas
+        <div class="det">${h.itens.map(i => `${esc(i.corte)} ${i.qtd}`).join(' · ')}</div>
+        <div class="det">impresso em ${h.em.slice(8, 10)}/${h.em.slice(5, 7)} às ${h.em.slice(11, 16)}</div></div>`;
+    }).join('') : '<div class="vazio">Nada impresso ainda.</div>';
+  } catch (e) { $('listaHist').innerHTML = `<div class="vazio">Não carregou: ${esc(e.message)}</div>`; }
+}
+
+// ============================================================ início
+(async () => {
+  desenharDatas();
+  try { cortes = (await api('/api/rotulos')).cortes; } catch (e) { toast('Não carregou os cortes: ' + e.message, 6000); }
+  desenharCortes(); atualizar();
+  // virou o dia com o app aberto: redesenha as datas
+  setInterval(desenharDatas, 60000);
+})();
+</script>
+</body>
+</html>

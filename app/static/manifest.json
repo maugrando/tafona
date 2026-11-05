@@ -1,0 +1,14 @@
+{
+  "name": "Rótulos · Tafona",
+  "short_name": "Rótulos Tafona",
+  "start_url": "/rotulos",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f3efe4",
+  "theme_color": "#2f4a2a",
+  "icons": [
+    {"src": "/rotulos/icone.png", "sizes": "180x180", "type": "image/png", "purpose": "any"},
+    {"src": "/rotulos/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}
