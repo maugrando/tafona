@@ -357,9 +357,24 @@ async function imprimirNaB1(folhas) {
   if (!(await conectar())) throw new Error('impressora não conectada');
   const tipo = cliente.getPrintTaskType() || 'B1';
   const dir = (cliente.getModelMetadata() || {}).printDirection || 'top';
-  const tarefa = cliente.protocol.newPrintTask(tipo, { totalPages: folhas.length, density: 3, labelType: niimbluelib.LabelType.WithGaps });
+  const opcoes = { totalPages: folhas.length, density: 3, labelType: niimbluelib.LabelType.WithGaps };
+  // No Windows o Bluetooth responde mais devagar: o padrão da biblioteca espera só 1 s pela resposta.
+  // Durante a impressão: pausa o "heartbeat" (consulta de status em segundo plano) e espera até 5 s.
+  const TEMPO = 5000;
+  cliente.stopHeartbeat();
+  let tarefa = cliente.protocol.newPrintTask(tipo, opcoes);
   try {
-    await tarefa.printInit();
+    cliente.protocol.setPacketTimeout(TEMPO);
+    try {
+      await tarefa.printInit();
+    } catch (e) {
+      // 1 nova tentativa: fecha o que ficou aberto, espera e começa de novo
+      try { await cliente.protocol.printEnd(); } catch (_) {}
+      await new Promise(r => setTimeout(r, 800));
+      cliente.protocol.setPacketTimeout(TEMPO);
+      tarefa = cliente.protocol.newPrintTask(tipo, opcoes);
+      await tarefa.printInit();
+    }
     let n = 0;
     for (const c of folhas) {
       await tarefa.printPage(niimbluelib.ImageEncoder.encodeCanvas(c, niimbluelib.PageColorType.SingleColor, dir), 1);
@@ -367,7 +382,12 @@ async function imprimirNaB1(folhas) {
       n++; $('btnImp').textContent = `Imprimindo ${n}/${folhas.length}…`;
     }
     await tarefa.waitForFinished();
-  } finally { await cliente.protocol.printEnd(); }   // sempre fecha, senão a B1 trava na próxima
+  } finally {
+    cliente.protocol.setPacketTimeout(TEMPO);
+    try { await cliente.protocol.printEnd(); } catch (_) {}   // sempre fecha, senão a B1 trava na próxima
+    cliente.protocol.setDefaultPacketTimeout();
+    if (cliente.isConnected()) cliente.startHeartbeat();
+  }
 }
 
 // ============================================================ fluxo de impressão
