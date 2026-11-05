@@ -344,12 +344,22 @@ async function conectar() {
     cliente = new niimbluelib.NiimbotBluetoothClient();
     cliente.on('disconnect', () => status('B1 desligada', false));
     status('Conectando…', false);
-    const info = await cliente.connect();
+    // a biblioteca não tem limite de tempo para conectar: se a B1 travar, a tela ficaria "Conectando…" para sempre
+    let limite;
+    const info = await Promise.race([
+      cliente.connect(),
+      new Promise((_, rej) => { limite = setTimeout(() => rej(new Error('a B1 não respondeu')), 20000); }),
+    ]).finally(() => clearTimeout(limite));
     status((info.deviceName || 'B1') + ' ok', true);
     return true;
   } catch (e) {
-    status('Não conectou', false); toast('Não conectou: ' + (e.message || e), 5000);
-    cliente = null; return false;
+    const msg = String(e && e.message || e);
+    if (cliente) { try { await cliente.disconnect(); } catch (_) {} }
+    cliente = null;
+    status('Não conectou', false);
+    if (/cancel/i.test(msg)) return false;   // a pessoa fechou a lista sem escolher
+    toast('Não conectou: ' + msg + '. Desligue e ligue a B1 (segure o botão), espere 5 s e toque Conectar de novo.', 9000);
+    return false;
   }
 }
 
