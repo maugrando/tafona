@@ -894,4 +894,5 @@ def estatico(arquivo: str):
     permitidos = {"ovelha.png", "ovelha-512.png"}
     if arquivo not in permitidos:
         raise HTTPException(404)
-    return FileResponse(BASE / "static" / arquivo, headers={"Cache-Control": "public, max-age=86400"})
+    # no-cache: o navegador sempre confere (ETag) e pega o ícone novo quando ele muda
+    return FileResponse(BASE / "static" / arquivo, headers={"Cache-Control": "no-cache"})
