@@ -38,3 +38,43 @@ impressoes(id, em, modo 'boi'|'avulsa', data_abate, bois, etiquetas, folhas, ite
 
 `docker compose up -d --build` → `curl http://127.0.0.1:8090/saude` → `{"ok":true}`.
 O backup precisa incluir `dados/`.
+
+---
+
+# Tafona · Ovelhas
+
+Controle do rebanho ovino, no mesmo container, em **https://tafona.maugrando.com.br/ovelhas**.
+Banco **SQLite** próprio em `./dados/ovelhas.db` (entra no mesmo backup). Sem login no app, como o Rótulos.
+
+- `app/ovelhas.py`: rotas `/ovelhas*` e `/api/ovelhas/*` (router incluído pelo `main.py`).
+- `app/ovelhas.html`: a página (PWA, um arquivo só). Ícone `app/static/ovelha*.png`, manifesto `ovelhas-manifest.json`.
+- Tudo por botão; só se digita brinco, peso e valor. Aba **Mais → Como funciona** explica o uso.
+
+## O que faz
+
+| Módulo | O quê |
+|---|---|
+| Rebanho | Cadastro por brinco (sexo, raça, nascimento, pai, mãe, origem, valor). Compra vira despesa; venda vira receita. Baixa: vendido / abatido / morto |
+| Genealogia | Árvore de 3 gerações, filhos. Parentesco pelo coeficiente de Wright: ≥ 0,2 bloqueia (pai×filha, irmãos, meio-irmãos, avô×neta), ≥ 0,1 avisa (primos) |
+| Reprodução | Monta a campo (carneiro + ovelhas, entrada/saída do lote); parição prevista em 150 dias; parição registrada já cria os cordeiros com pai e mãe |
+| Sanidade | Vacina, vermífugo, Famacha, casco… em lote, custo total rateado, repetição em N dias com aviso de vencimento; Famacha ≥ 4 vira aviso |
+| Pesagens | Em lote por data; ganho e g/dia na ficha |
+| Custos | Lançamentos manuais + automáticos; despesa sem animal é rateada por animal-dia; custo direto/rateado/total por animal |
+| Painel | Contagem por categoria, avisos (sanidade vencida, Famacha, parição prevista, filhas do carneiro em idade de cruzar, sem pesagem há 60 dias), dinheiro no ano |
+| Exportar | `/ovelhas/exportar.zip`: todas as tabelas em CSV (`;`, UTF-8 com BOM, decimal com vírgula) |
+
+## Banco (`ovelhas.db`, criado sozinho)
+
+```sql
+config(chave, valor)                       -- raca_padrao, nome_rebanho
+animais(id, brinco UNIQUE, nome, sexo F|M, raca, nascimento, pai_id, mae_id, origem comprado|nascido, entrada,
+        valor_compra, status ativo|vendido|abatido|morto, saida, valor_saida, motivo_saida, obs, criado_em)
+montas(id, carneiro_id, inicio, fim, obs) + monta_ovelhas(monta_id, ovelha_id)
+paricoes(id, mae_id, pai_id, monta_id, data, vivos, mortos, obs)
+sanidade(id, animal_id, data, tipo, produto, dose, famacha, custo, proxima, obs, grupo)
+pesagens(id, animal_id, data, kg, obs)
+lancamentos(id, data, tipo despesa|receita, categoria, descricao, valor, animal_id NULL=rebanho, origem)
+```
+
+`origem` em `lancamentos` marca os automáticos (`animal:<id>`, `saida:<id>`, `sanidade:<grupo>`): não se apagam pela aba Custos.
+O banco é só leitura para quem for responder perguntas (Claude): abrir `ovelhas.db` com SQLite.

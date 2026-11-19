@@ -1,0 +1,14 @@
+{
+  "name": "Ovelhas · Tafona",
+  "short_name": "Ovelhas",
+  "start_url": "/ovelhas",
+  "scope": "/ovelhas",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f3efe4",
+  "theme_color": "#2f4a2a",
+  "icons": [
+    {"src": "/ovelhas/ovelha.png", "sizes": "180x180", "type": "image/png", "purpose": "any"},
+    {"src": "/ovelhas/ovelha-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}

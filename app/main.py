@@ -16,11 +16,14 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
+import ovelhas
+
 BASE = Path(__file__).parent
 DADOS = Path(os.environ.get("TAFONA_DADOS", "/dados"))
 DB = DADOS / "tafona.db"
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+app.include_router(ovelhas.router)   # /ovelhas e /api/ovelhas/* (banco próprio: ovelhas.db)
 
 
 # ---------------------------------------------------------------- banco
@@ -70,6 +73,7 @@ def criar_banco():
 @app.on_event("startup")
 def _inicio():
     criar_banco()
+    ovelhas.criar_banco()
 
 
 # ---------------------------------------------------------------- páginas e arquivos

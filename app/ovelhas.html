@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ovelhas · Tafona</title>
+<link rel="manifest" href="/ovelhas/manifest.json">
+<link rel="icon" href="/ovelhas/ovelha.png">
+<link rel="apple-touch-icon" href="/ovelhas/ovelha.png">
+<meta name="theme-color" content="#2f4a2a">
+<style>
+  :root { --verde:#2f4a2a; --verde2:#4b6b3f; --creme:#f3efe4; --carne:#9b2c1f; --cinza:#6b6b6b; --borda:#d8d2c2; --ok:#2e7d32; --at:#c77700; --nao:#b3261e; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; font-family: system-ui, -apple-system, Roboto, sans-serif; background: var(--creme); color:#1d1d1d; padding-bottom: 92px; }
+  header { position: sticky; top:0; z-index:5; background: var(--verde); color:#fff; padding: 10px 14px 12px; box-shadow: 0 2px 8px #0003; }
+  .linha { display:flex; align-items:center; gap:10px; }
+  .titulo { font-weight:800; font-size:20px; flex:1; display:flex; align-items:center; gap:8px; }
+  .titulo img { width:30px; height:30px; border-radius:8px; }
+  .btn-top { background:#fff; color:var(--verde); border:0; border-radius:10px; font-weight:800; padding:10px 14px; font-size:15px; }
+  main { padding: 14px; max-width: 900px; margin: 0 auto; }
+  .aba { display:none; } .aba.ativa { display:block; }
+  h2 { margin: 4px 0 12px; font-size: 20px; color: var(--verde); }
+  h3 { margin: 14px 0 8px; font-size: 16px; color: var(--verde2); }
+  .card { background:#fff; border-radius:14px; padding:14px; box-shadow:0 1px 4px #0001; margin-bottom:12px; }
+  .kpis { display:grid; grid-template-columns: repeat(auto-fill, minmax(120px,1fr)); gap:10px; }
+  .kpi { background:#fff; border-radius:14px; padding:12px; box-shadow:0 1px 4px #0001; text-align:center; }
+  .kpi .n { font-size:30px; font-weight:900; color:var(--verde); }
+  .kpi .n.neg { color:var(--carne); }
+  .kpi .n.din { font-size:20px; }
+  .kpi .r { font-size:13px; color:var(--cinza); margin-top:2px; }
+  .botoes { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .b { border:0; border-radius:12px; font-size:17px; font-weight:800; padding:14px 16px; background:#e9e4d6; color:#222; flex:1; min-width:120px; }
+  .b:active { transform: scale(.97); }
+  .b.p { background:var(--verde); color:#fff; }
+  .b.v { background:var(--carne); color:#fff; }
+  .b.s { background:#eee; color:#555; font-size:15px; padding:10px 14px; flex:0 0 auto; min-width:0; white-space:nowrap; }
+  .b:disabled { opacity:.5; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 10px; }
+  .chip { border:2px solid var(--borda); background:#fff; border-radius:999px; padding:10px 14px; font-size:16px; font-weight:700; color:#333; }
+  .chip.sel { background:var(--verde); color:#fff; border-color:var(--verde); }
+  .chip.sel.nao { background:var(--nao); border-color:var(--nao); }
+  .chip.sel.at { background:var(--at); border-color:var(--at); }
+  .lista .it { display:flex; align-items:center; gap:10px; padding:12px 4px; border-bottom:1px solid #eee; }
+  .lista .it:last-child { border-bottom:0; }
+  .it .ic { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; background:#eef2ea; flex-shrink:0; }
+  .it .ic.m { background:#e7eef8; }
+  .it .tx { flex:1; min-width:0; }
+  .it .tx b { font-size:18px; }
+  .it .tx small { display:block; color:var(--cinza); font-size:14px; }
+  .it .dir { text-align:right; font-weight:800; white-space:nowrap; }
+  .it .dir small { display:block; color:var(--cinza); font-weight:500; font-size:13px; }
+  .sem { display:inline-block; width:14px; height:14px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+  .sem.ok { background:var(--ok); } .sem.atencao { background:var(--at); } .sem.bloqueado { background:var(--nao); }
+  .al { padding:10px 12px; border-radius:12px; margin-bottom:8px; font-size:15px; border-left:5px solid; background:#fff; }
+  .al.alto { border-color:var(--nao); background:#fdecea; } .al.medio { border-color:var(--at); background:#fff4d6; } .al.baixo { border-color:#999; background:#f4f4f4; }
+  .vazio { color: var(--cinza); text-align:center; padding: 18px; }
+  .rodape { position:fixed; left:0; right:0; bottom:0; background:#fff; box-shadow:0 -2px 10px #0002; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); z-index:6; }
+  .tabs { display:flex; gap:2px; }
+  .tab { flex:1; border:0; background:transparent; padding:6px 0; font-size:12px; font-weight:700; color:#777; border-radius:10px; }
+  .tab .ic { display:block; font-size:22px; }
+  .tab.ativa { background: #e8efe4; color: var(--verde); }
+  label { display:block; font-size:14px; color:var(--cinza); margin:10px 0 4px; }
+  input, select, textarea { width:100%; font-size:18px; padding:12px; border-radius:10px; border:2px solid var(--borda); background:#fff; font-family:inherit; }
+  textarea { min-height:70px; }
+  .duas { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  dialog { border:0; border-radius:16px; padding:18px; width:min(520px, 94vw); max-height:92vh; overflow:auto; }
+  dialog::backdrop { background:#0007; }
+  dialog h2 { margin-top:0; }
+  .acoes { display:flex; gap:10px; margin-top:16px; }
+  .acoes button { flex:1; border:0; border-radius:12px; font-size:18px; font-weight:800; padding:14px; }
+  .ok { background: var(--verde); color:#fff; } .nao { background:#eee; } .perigo { background:var(--carne); color:#fff; }
+  .aviso { background:#fff4d6; border-radius:12px; padding:10px 12px; font-size:15px; margin:10px 0; }
+  .erro { background:#fdecea; border-radius:12px; padding:10px 12px; font-size:15px; margin:10px 0; color:var(--nao); }
+  table { width:100%; border-collapse: collapse; font-size:15px; }
+  th, td { padding:8px 4px; border-bottom:1px solid #eee; text-align:left; }
+  td.n, th.n { text-align:right; white-space:nowrap; }
+  .arv { font-size:14px; line-height:1.5; }
+  .arv .g { display:flex; gap:8px; }
+  .arv .no { flex:1; background:#f6f3ea; border-radius:8px; padding:6px 8px; margin-top:6px; }
+  .arv .no b { display:block; }
+  .pill { display:inline-block; background:#eef2ea; color:var(--verde); border-radius:999px; padding:3px 10px; font-size:13px; font-weight:700; margin-left:6px; }
+  .pill.off { background:#eee; color:#777; }
+  .ajuda p, .ajuda li { font-size:16px; line-height:1.5; }
+  .ajuda h3 { margin-top:18px; }
+  .peso-linha { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #eee; }
+  .peso-linha b { flex:1; font-size:17px; }
+  .peso-linha input { width:110px; text-align:right; }
+  .peso-linha small { color:var(--cinza); width:70px; text-align:right; }
+  .filtro { display:flex; gap:8px; margin-bottom:10px; }
+  .filtro select { flex:1; }
+  #toast { position:fixed; left:50%; transform:translateX(-50%); bottom:110px; background:#222; color:#fff; padding:12px 18px; border-radius:12px; font-size:16px; display:none; z-index:20; max-width:90vw; text-align:center; }
+  .link { color:var(--verde); font-weight:700; text-decoration:underline; background:none; border:0; font-size:15px; padding:0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="linha">
+    <div class="titulo"><img src="/ovelhas/ovelha.png" alt=""><span id="tituloApp">Ovelhas · Tafona</span></div>
+    <button class="btn-top" onclick="abrirNovoAnimal()">+ Animal</button>
+  </div>
+</header>
+
+<main>
+  <!-- ======================= PAINEL ======================= -->
+  <section class="aba ativa" id="aba-painel">
+    <div class="kpis" id="kpis"></div>
+    <div class="card">
+      <h2>Avisos</h2>
+      <div id="alertas"></div>
+    </div>
+    <div class="card">
+      <h2>Próximas parições</h2>
+      <div id="proxParicoes"></div>
+    </div>
+    <div class="card">
+      <h2>Dinheiro em <span id="anoPainel"></span></h2>
+      <div id="dinheiroPainel"></div>
+    </div>
+  </section>
+
+  <!-- ======================= REBANHO ======================= -->
+  <section class="aba" id="aba-rebanho">
+    <div class="chips" id="filtroRebanho">
+      <button class="chip sel" data-f="ativos" onclick="filtrarRebanho(this)">Ativos</button>
+      <button class="chip" data-f="F" onclick="filtrarRebanho(this)">Fêmeas</button>
+      <button class="chip" data-f="M" onclick="filtrarRebanho(this)">Machos</button>
+      <button class="chip" data-f="todos" onclick="filtrarRebanho(this)">Todos (com baixas)</button>
+    </div>
+    <div class="card lista" id="listaRebanho"></div>
+  </section>
+
+  <!-- ======================= REPRODUÇÃO ======================= -->
+  <section class="aba" id="aba-repro">
+    <div class="card">
+      <h2>Quem pode cruzar com quem</h2>
+      <label>Carneiro</label>
+      <div class="chips" id="chipsCarneiros"></div>
+      <div id="cruzamento"></div>
+      <div class="botoes"><button class="b p" id="btnMonta" onclick="abrirMonta()" disabled>Soltar o carneiro com as ovelhas</button></div>
+    </div>
+    <div class="card">
+      <h2>Montas</h2>
+      <div class="lista" id="listaMontas"></div>
+    </div>
+    <div class="card">
+      <h2>Parições</h2>
+      <div class="botoes" style="margin-top:0"><button class="b v" onclick="abrirParicao()">Registrar parição</button></div>
+      <div class="lista" id="listaParicoes" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- ======================= SANIDADE ======================= -->
+  <section class="aba" id="aba-sanidade">
+    <div class="card">
+      <h2>Aplicar</h2>
+      <div class="chips" id="chipsTipo"></div>
+      <div class="duas">
+        <div><label>Data</label><input type="date" id="sanData"></div>
+        <div><label>Repetir em (dias)</label><input type="number" id="sanRepete" placeholder="ex.: 30" inputmode="numeric"></div>
+      </div>
+      <div class="duas">
+        <div><label>Produto</label><input id="sanProduto" placeholder="ex.: Ivermectina"></div>
+        <div><label>Dose</label><input id="sanDose" placeholder="ex.: 1 ml"></div>
+      </div>
+      <div class="duas">
+        <div><label>Custo total (R$)</label><input id="sanCusto" inputmode="decimal" placeholder="rateia entre os animais"></div>
+        <div id="famachaBox" style="display:none"><label>Famacha</label>
+          <div class="chips" id="chipsFamacha" style="margin:0">
+            <button class="chip" onclick="famacha(1,this)">1</button><button class="chip" onclick="famacha(2,this)">2</button>
+            <button class="chip" onclick="famacha(3,this)">3</button><button class="chip" onclick="famacha(4,this)">4</button><button class="chip" onclick="famacha(5,this)">5</button>
+          </div></div>
+      </div>
+      <label>Animais <button class="link" onclick="selTodos('chipsSanAnimais')">todos</button> · <button class="link" onclick="selNenhum('chipsSanAnimais')">nenhum</button></label>
+      <div class="chips" id="chipsSanAnimais"></div>
+      <div class="botoes"><button class="b p" onclick="salvarSanidade()">Registrar aplicação</button></div>
+    </div>
+    <div class="card">
+      <h2>Histórico</h2>
+      <div class="lista" id="listaSanidade"></div>
+    </div>
+  </section>
+
+  <!-- ======================= CUSTOS ======================= -->
+  <section class="aba" id="aba-custos">
+    <div class="filtro"><select id="anoCustos" onchange="carregarCustos()"></select></div>
+    <div class="kpis" id="kpisCustos"></div>
+    <div class="botoes" style="margin:10px 0">
+      <button class="b v" onclick="abrirLancamento('despesa')">+ Despesa</button>
+      <button class="b p" onclick="abrirLancamento('receita')">+ Receita</button>
+    </div>
+    <div class="card"><h2>Por categoria</h2><div id="custosCat"></div></div>
+    <div class="card"><h2>Por animal</h2><div class="aviso">Direto = compra, venda, remédio do animal. Rateado = ração, sal, cerca e outros gastos gerais divididos por animal e por dia presente.</div><div id="custosAnimal"></div></div>
+    <div class="card"><h2>Lançamentos</h2><div class="lista" id="listaLanc"></div></div>
+  </section>
+
+  <!-- ======================= MAIS ======================= -->
+  <section class="aba" id="aba-mais">
+    <div class="card">
+      <h2>Pesagem em lote</h2>
+      <label>Data</label><input type="date" id="pesData">
+      <div id="pesLinhas" style="margin-top:8px"></div>
+      <div class="botoes"><button class="b p" onclick="salvarPesagens()">Salvar pesos</button></div>
+    </div>
+    <div class="card">
+      <h2>Configuração</h2>
+      <label>Raça padrão</label><input id="cfgRaca">
+      <label>Nome do rebanho</label><input id="cfgNome">
+      <div class="botoes"><button class="b" onclick="salvarConfig()">Salvar</button></div>
+    </div>
+    <div class="card">
+      <h2>Exportar</h2>
+      <p style="font-size:15px;color:var(--cinza);margin:0 0 8px">Todas as tabelas em CSV (abre no Excel ou Google Sheets).</p>
+      <div class="botoes"><a class="b" style="text-align:center;text-decoration:none" href="/ovelhas/exportar.zip">Baixar planilhas</a></div>
+    </div>
+    <div class="card ajuda" id="ajuda">
+      <h2>Como funciona</h2>
+      <p>Este app é o caderno das ovelhas: quem é quem, quem é filho de quem, quem pode cruzar com quem, o que cada animal tomou, quanto pesa e quanto custou. Quase tudo é por botão. Só se digita brinco, peso e valor.</p>
+      <h3>Rotina sugerida</h3>
+      <ul>
+        <li><b>Chegou animal:</b> <b>+ Animal</b> no topo. Brinco, sexo, nascimento (pode ser aproximado), de onde veio e o valor pago. O valor vira despesa sozinho.</li>
+        <li><b>Hora de cruzar:</b> aba <b>Reprodução</b>, toque no carneiro. Cada ovelha aparece com uma bolinha: verde pode, laranja é melhor evitar, vermelha não pode (filha, mãe, irmã). Depois <b>Soltar o carneiro</b> com as escolhidas e a data. O app calcula a parição para 150 dias.</li>
+        <li><b>Nasceu cordeiro:</b> <b>Registrar parição</b>: mãe, data, brinco e sexo de cada cordeiro vivo. Eles já entram no rebanho com pai e mãe certos.</li>
+        <li><b>Vacina, vermífugo, Famacha:</b> aba <b>Sanidade</b>, escolha o tipo, os animais e o custo total. O app rateia e, se você disser em quantos dias repete, avisa quando vencer. Famacha 4 ou 5 vira aviso vermelho.</li>
+        <li><b>Pesar:</b> aba <b>Mais</b>, pesagem em lote: uma data, um peso por animal.</li>
+        <li><b>Gastou ou vendeu:</b> aba <b>Custos</b>. Ração, sal e cerca entram sem animal e são rateados. Remédio de um animal só entra com o animal.</li>
+        <li><b>Saiu animal:</b> abra a ficha dele e toque em <b>Dar baixa</b> (vendido, abatido ou morto). Venda vira receita.</li>
+      </ul>
+      <h3>Brincos</h3>
+      <p>Padrão sugerido: ano com dois dígitos, traço e sequência (26-001, 26-002…). O app sugere o próximo. Pode usar outro padrão, desde que não repita.</p>
+      <h3>O cuidado genético</h3>
+      <p>Com um carneiro só, as filhas dele não podem cruzar com ele. Quando a primeira filha chegar perto dos 7 meses, o painel avisa: é hora de comprar ou trocar o carneiro, ou separar as borregas. O app bloqueia pai × filha, mãe × filho, irmãos e meio-irmãos, e marca primos como atenção.</p>
+      <h3>Perguntar ao Claude</h3>
+      <p>O banco deste app pode ser lido pelo Claude. Pergunte "quanto custou cada cordeiro", "quem está com vermífugo atrasado" ou "quanto a ovelha 26-003 ganhou de peso" e a resposta sai daqui.</p>
+    </div>
+  </section>
+</main>
+
+<div class="rodape">
+  <div class="tabs">
+    <button class="tab ativa" onclick="aba('painel',this)"><span class="ic">🏠</span>Painel</button>
+    <button class="tab" onclick="aba('rebanho',this)"><span class="ic">🐑</span>Rebanho</button>
+    <button class="tab" onclick="aba('repro',this)"><span class="ic">❤️</span>Reprodução</button>
+    <button class="tab" onclick="aba('sanidade',this)"><span class="ic">💉</span>Sanidade</button>
+    <button class="tab" onclick="aba('custos',this)"><span class="ic">💰</span>Custos</button>
+    <button class="tab" onclick="aba('mais',this)"><span class="ic">⚙️</span>Mais</button>
+  </div>
+</div>
+
+<!-- ======================= DIÁLOGOS ======================= -->
+<dialog id="dlgAnimal">
+  <h2 id="dlgAnimalTitulo">Novo animal</h2>
+  <div class="duas">
+    <div><label>Brinco</label><input id="aBrinco" maxlength="30"></div>
+    <div><label>Nome (opcional)</label><input id="aNome" maxlength="60"></div>
+  </div>
+  <label>Sexo</label>
+  <div class="chips"><button class="chip" id="sexoF" onclick="setSexo('F')">♀ Fêmea</button><button class="chip" id="sexoM" onclick="setSexo('M')">♂ Macho</button></div>
+  <div class="duas">
+    <div><label>Nascimento</label><input type="date" id="aNasc"></div>
+    <div><label>Raça</label><input id="aRaca"></div>
+  </div>
+  <label>Origem</label>
+  <div class="chips"><button class="chip" id="origC" onclick="setOrigem('comprado')">Comprado</button><button class="chip" id="origN" onclick="setOrigem('nascido')">Nascido aqui</button></div>
+  <div class="duas" id="boxCompra">
+    <div><label>Entrada na fazenda</label><input type="date" id="aEntrada"></div>
+    <div><label>Valor pago (R$)</label><input id="aValor" inputmode="decimal"></div>
+  </div>
+  <div class="duas">
+    <div><label>Pai</label><select id="aPai"></select></div>
+    <div><label>Mãe</label><select id="aMae"></select></div>
+  </div>
+  <label>Observações</label><textarea id="aObs"></textarea>
+  <div class="erro" id="aErro" style="display:none"></div>
+  <div class="acoes"><button class="nao" onclick="fechar('dlgAnimal')">Cancelar</button><button class="ok" onclick="salvarAnimal()">Salvar</button></div>
+</dialog>
+
+<dialog id="dlgFicha"><div id="fichaConteudo"></div></dialog>
+
+<dialog id="dlgBaixa">
+  <h2>Dar baixa</h2>
+  <div class="chips"><button class="chip" onclick="setBaixa('vendido',this)">Vendido</button><button class="chip" onclick="setBaixa('abatido',this)">Abatido</button><button class="chip" onclick="setBaixa('morto',this)">Morto</button></div>
+  <div class="duas">
+    <div><label>Data</label><input type="date" id="bxData"></div>
+    <div id="bxValorBox"><label>Valor (R$)</label><input id="bxValor" inputmode="decimal"></div>
+  </div>
+  <label>Motivo / observação</label><input id="bxMotivo">
+  <div class="acoes"><button class="nao" onclick="fechar('dlgBaixa')">Cancelar</button><button class="perigo" onclick="salvarBaixa()">Confirmar</button></div>
+</dialog>
+
+<dialog id="dlgMonta">
+  <h2>Soltar o carneiro</h2>
+  <p id="montaResumo" style="font-size:16px"></p>
+  <div class="duas">
+    <div><label>Entrou no lote</label><input type="date" id="mInicio"></div>
+    <div><label>Sai do lote (pode deixar em branco)</label><input type="date" id="mFim"></div>
+  </div>
+  <label>Observação</label><input id="mObs">
+  <div class="erro" id="mErro" style="display:none"></div>
+  <div class="acoes"><button class="nao" onclick="fechar('dlgMonta')">Cancelar</button><button class="ok" onclick="salvarMonta()">Confirmar</button></div>
+</dialog>
+
+<dialog id="dlgParicao">
+  <h2>Registrar parição</h2>
+  <label>Mãe</label><select id="pMae" onchange="paiDaMonta()"></select>
+  <div class="duas">
+    <div><label>Data</label><input type="date" id="pData"></div>
+    <div><label>Pai</label><select id="pPai"></select></div>
+  </div>
+  <label>Cordeiros vivos</label>
+  <div id="pCordeiros"></div>
+  <div class="botoes" style="margin-top:6px"><button class="b s" onclick="addCordeiro()">+ cordeiro</button></div>
+  <label>Natimortos / mortos no parto</label><input type="number" id="pMortos" value="0" inputmode="numeric">
+  <label>Observação</label><input id="pObs">
+  <div class="erro" id="pErro" style="display:none"></div>
+  <div class="acoes"><button class="nao" onclick="fechar('dlgParicao')">Cancelar</button><button class="ok" onclick="salvarParicao()">Salvar</button></div>
+</dialog>
+
+<dialog id="dlgLanc">
+  <h2 id="lancTitulo">Despesa</h2>
+  <div class="duas">
+    <div><label>Data</label><input type="date" id="lData"></div>
+    <div><label>Valor (R$)</label><input id="lValor" inputmode="decimal"></div>
+  </div>
+  <label>Categoria</label><div class="chips" id="lCats"></div>
+  <label>Descrição</label><input id="lDesc" maxlength="200">
+  <label>Animal (deixe "Rebanho todo" para ração, sal, cerca…)</label><select id="lAnimal"></select>
+  <div class="erro" id="lErro" style="display:none"></div>
+  <div class="acoes"><button class="nao" onclick="fechar('dlgLanc')">Cancelar</button><button class="ok" onclick="salvarLancamento()">Salvar</button></div>
+</dialog>
+
+<div id="toast"></div>
+
+<script>
+// ---------------------------------------------------------------- estado e utilidades
+const E = {animais: [], ativos: [], config: {}, carneiroSel: null, cruz: null, sanTipo: 'Vermífugo', famacha: null,
+           filtroRebanho: 'ativos', lancTipo: 'despesa', lancCat: null, animalEdit: null, baixaStatus: null, baixaId: null, montasCache: []};
+const $ = id => document.getElementById(id);
+const hoje = () => new Date().toISOString().slice(0,10);
+const fd = s => s ? `${s.slice(8,10)}/${s.slice(5,7)}/${s.slice(0,4)}` : '';
+const R$ = v => (v == null ? 0 : v).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sexoIc = a => a.sexo === 'M' ? '♂' : '♀';
+const rotulo = a => esc(a.brinco) + (a.nome ? ' · ' + esc(a.nome) : '');
+
+async function api(url, opts) {
+  const r = await fetch(url, opts ? {headers: {'Content-Type':'application/json'}, ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined} : undefined);
+  if (r.status === 401 || r.status === 403) { location.reload(); throw new Error('acesso'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || 'erro');
+  return j;
+}
+function toast(m) { const t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(t._t); t._t = setTimeout(() => t.style.display = 'none', 2600); }
+function fechar(id) { $(id).close(); }
+function erroEm(id, m) { const e = $(id); e.textContent = m; e.style.display = m ? 'block' : 'none'; }
+function selTodos(id) { $(id).querySelectorAll('.chip').forEach(c => c.classList.add('sel')); }
+function selNenhum(id) { $(id).querySelectorAll('.chip').forEach(c => c.classList.remove('sel')); }
+function selecionados(id) { return [...$(id).querySelectorAll('.chip.sel')].map(c => +c.dataset.id); }
+
+function aba(nome, btn) {
+  document.querySelectorAll('.aba').forEach(a => a.classList.remove('ativa'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('ativa'));
+  $('aba-' + nome).classList.add('ativa'); btn.classList.add('ativa');
+  ({painel: carregarPainel, rebanho: desenharRebanho, repro: carregarRepro, sanidade: desenharSanidade, custos: carregarCustos, mais: desenharMais})[nome]();
+  window.scrollTo(0, 0);
+}
+
+async function carregarAnimais() {
+  const j = await api('/api/ovelhas/animais?todos=1');
+  E.animais = j.animais; E.ativos = j.animais.filter(a => a.status === 'ativo');
+}
+
+// ---------------------------------------------------------------- painel
+async function carregarPainel() {
+  const p = await api('/api/ovelhas/painel');
+  const c = p.contagem;
+  $('kpis').innerHTML = [
+    [c.total, 'no rebanho'], [c.ovelhas, 'ovelhas'], [c.carneiros, 'carneiros'],
+    [c.borregas + c.borregos, 'borregos(as)'], [c.cordeiros, 'cordeiros'],
+    [p.paricoes_ano.vivos, `nascidos em ${p.ano}`],
+  ].map(([n, r]) => `<div class="kpi"><div class="n">${n}</div><div class="r">${r}</div></div>`).join('');
+  $('alertas').innerHTML = p.alertas.length ? p.alertas.map(a =>
+    `<div class="al ${a.nivel}" onclick="${a.animal_id ? `abrirFicha(${a.animal_id})` : ''}">${esc(a.texto)}</div>`).join('') : '<div class="vazio">Nada pendente.</div>';
+  $('proxParicoes').innerHTML = p.proximas_paricoes.length ? p.proximas_paricoes.map(x =>
+    `<div class="al baixo"><b>${esc(x.brinco)}</b> entre ${fd(x.de)} e ${fd(x.ate)} <small>(carneiro ${esc(x.carneiro)})</small></div>`).join('') : '<div class="vazio">Nenhuma monta aberta.</div>';
+  $('anoPainel').textContent = p.ano;
+  const res = p.receita_ano - p.despesa_ano;
+  $('dinheiroPainel').innerHTML = `<div class="kpis">
+    <div class="kpi"><div class="n neg din">${R$(p.despesa_ano)}</div><div class="r">gasto no ano</div></div>
+    <div class="kpi"><div class="n din">${R$(p.receita_ano)}</div><div class="r">recebido no ano</div></div>
+    <div class="kpi"><div class="n din ${res < 0 ? 'neg' : ''}">${R$(res)}</div><div class="r">resultado</div></div>
+    <div class="kpi"><div class="n neg din">${R$(p.custo_por_cabeca_ano)}</div><div class="r">gasto por cabeça</div></div>
+  </div><p style="color:var(--cinza);font-size:14px;margin:10px 0 0">Desde o início: gasto ${R$(p.despesa_total)} · recebido ${R$(p.receita_total)}.</p>`;
+}
+
+// ---------------------------------------------------------------- rebanho
+function filtrarRebanho(btn) {
+  $('filtroRebanho').querySelectorAll('.chip').forEach(c => c.classList.remove('sel')); btn.classList.add('sel');
+  E.filtroRebanho = btn.dataset.f; desenharRebanho();
+}
+async function desenharRebanho() {
+  await carregarAnimais();
+  let lista = E.animais;
+  if (E.filtroRebanho === 'ativos') lista = E.ativos;
+  else if (E.filtroRebanho === 'F' || E.filtroRebanho === 'M') lista = E.ativos.filter(a => a.sexo === E.filtroRebanho);
+  $('listaRebanho').innerHTML = lista.length ? lista.map(a => `
+    <div class="it" onclick="abrirFicha(${a.id})">
+      <div class="ic ${a.sexo === 'M' ? 'm' : ''}">${a.sexo === 'M' ? '🐏' : '🐑'}</div>
+      <div class="tx"><b>${rotulo(a)}</b>${a.status !== 'ativo' ? `<span class="pill off">${a.status}</span>` : ''}
+        <small>${sexoIc(a)} ${a.idade || 'idade ?'}${a.pai_brinco || a.mae_brinco ? ` · pai ${esc(a.pai_brinco || '?')} · mãe ${esc(a.mae_brinco || '?')}` : ' · ' + (a.origem === 'nascido' ? 'nascido aqui' : 'comprado')}</small></div>
+      <div class="dir">${a.ultimo_peso ? a.ultimo_peso + ' kg' : ''}<small>${a.ultima_pesagem ? fd(a.ultima_pesagem) : ''}</small></div>
+    </div>`).join('') : '<div class="vazio">Nenhum animal. Toque em <b>+ Animal</b>.</div>';
+}
+
+function preencherPais(selPai, selMae, excluirId) {
+  const op = (lista, vazio) => `<option value="">${vazio}</option>` + lista.filter(a => a.id !== excluirId).map(a => `<option value="${a.id}">${rotulo(a)}${a.status !== 'ativo' ? ' (' + a.status + ')' : ''}</option>`).join('');
+  $(selPai).innerHTML = op(E.animais.filter(a => a.sexo === 'M'), 'Desconhecido / de fora');
+  $(selMae).innerHTML = op(E.animais.filter(a => a.sexo === 'F'), 'Desconhecida / de fora');
+}
+function setSexo(s) { E.sexo = s; $('sexoF').classList.toggle('sel', s === 'F'); $('sexoM').classList.toggle('sel', s === 'M'); }
+function setOrigem(o) { E.origem = o; $('origC').classList.toggle('sel', o === 'comprado'); $('origN').classList.toggle('sel', o === 'nascido'); $('boxCompra').style.display = o === 'comprado' ? 'grid' : 'none'; }
+async function abrirNovoAnimal() {
+  await carregarAnimais();
+  E.animalEdit = null; $('dlgAnimalTitulo').textContent = 'Novo animal';
+  const pb = await api('/api/ovelhas/proximo-brinco');
+  $('aBrinco').value = pb.brinco; $('aNome').value = ''; $('aNasc').value = ''; $('aRaca').value = E.config.raca_padrao || '';
+  $('aEntrada').value = hoje(); $('aValor').value = ''; $('aObs').value = ''; erroEm('aErro', '');
+  setSexo('F'); setOrigem('comprado'); preencherPais('aPai', 'aMae', null);
+  $('dlgAnimal').showModal();
+}
+async function editarAnimal(id) {
+  await carregarAnimais();
+  const a = E.animais.find(x => x.id === id); E.animalEdit = id;
+  $('dlgAnimalTitulo').textContent = 'Editar ' + a.brinco;
+  $('aBrinco').value = a.brinco; $('aNome').value = a.nome || ''; $('aNasc').value = a.nascimento || ''; $('aRaca').value = a.raca || '';
+  $('aEntrada').value = a.entrada || ''; $('aValor').value = a.valor_compra ?? ''; $('aObs').value = a.obs || ''; erroEm('aErro', '');
+  setSexo(a.sexo); setOrigem(a.origem); preencherPais('aPai', 'aMae', id); $('aPai').value = a.pai_id || ''; $('aMae').value = a.mae_id || '';
+  fechar('dlgFicha'); $('dlgAnimal').showModal();
+}
+async function salvarAnimal() {
+  try {
+    await api('/api/ovelhas/animais', {method: 'POST', body: {
+      id: E.animalEdit, brinco: $('aBrinco').value, nome: $('aNome').value, sexo: E.sexo, raca: $('aRaca').value, nascimento: $('aNasc').value,
+      origem: E.origem, entrada: E.origem === 'comprado' ? $('aEntrada').value : $('aNasc').value, valor_compra: E.origem === 'comprado' ? $('aValor').value : '',
+      pai_id: $('aPai').value || null, mae_id: $('aMae').value || null, obs: $('aObs').value }});
+    fechar('dlgAnimal'); toast(E.animalEdit ? 'Alterado' : 'Animal cadastrado'); desenharRebanho(); carregarPainel();
+  } catch (e) { erroEm('aErro', e.message); }
+}
+
+function arvore(no) {
+  if (!no) return '<div class="no"><b>?</b></div>';
+  return `<div class="no"><b>${esc(no.brinco)}</b>${no.pai || no.mae ? `<div class="g">${arvore(no.pai)}${arvore(no.mae)}</div>` : ''}</div>`;
+}
+async function abrirFicha(id) {
+  const a = await api('/api/ovelhas/animais/' + id);
+  const pes = a.pesagens, ganho = pes.length > 1 ? (pes.at(-1).kg - pes[0].kg) : null;
+  const gmd = pes.length > 1 ? ((pes.at(-1).kg - pes[0].kg) * 1000 / Math.max(1, (new Date(pes.at(-1).data) - new Date(pes[0].data)) / 864e5)).toFixed(0) : null;
+  $('fichaConteudo').innerHTML = `
+    <h2>${a.sexo === 'M' ? '🐏' : '🐑'} ${rotulo(a)} ${a.status !== 'ativo' ? `<span class="pill off">${a.status}${a.saida ? ' ' + fd(a.saida) : ''}</span>` : ''}</h2>
+    <p style="margin:0;color:var(--cinza)">${sexoIc(a)} ${a.raca || ''} · ${a.idade ? a.idade : 'idade ?'}${a.nascimento ? ' (' + fd(a.nascimento) + ')' : ''} · ${a.origem === 'nascido' ? 'nascido aqui' : 'comprado' + (a.entrada ? ' em ' + fd(a.entrada) : '')}${a.valor_compra ? ' por ' + R$(a.valor_compra) : ''}</p>
+    ${a.obs ? `<p style="font-size:15px">${esc(a.obs)}</p>` : ''}
+    <div class="botoes"><button class="b s" onclick="editarAnimal(${a.id})">Editar</button>
+      ${a.status === 'ativo' ? `<button class="b s" onclick="abrirBaixa(${a.id})">Dar baixa</button>` : `<button class="b s" onclick="reativar(${a.id})">Voltar para ativo</button>`}
+      ${!a.filhos.length && !a.paricoes.length ? `<button class="b s" onclick="excluirAnimal(${a.id})">Excluir</button>` : ''}</div>
+    <h3>Genealogia</h3><div class="arv">${arvore(a.arvore)}</div>
+    ${a.filhos.length ? `<h3>Filhos (${a.filhos.length})</h3><div class="chips">${a.filhos.map(f => `<button class="chip" onclick="abrirFicha(${f.id})">${f.sexo === 'M' ? '♂' : '♀'} ${esc(f.brinco)}${f.status !== 'ativo' ? ' (' + f.status + ')' : ''}</button>`).join('')}</div>` : ''}
+    <h3>Peso</h3>${pes.length ? `<p style="margin:0 0 6px"><b>${pes.at(-1).kg} kg</b> em ${fd(pes.at(-1).data)}${ganho != null ? ` · ganhou ${ganho.toFixed(1)} kg desde ${fd(pes[0].data)} (${gmd} g/dia)` : ''}</p>
+      <table>${pes.slice().reverse().map(p => `<tr><td>${fd(p.data)}</td><td class="n">${p.kg} kg</td><td style="color:var(--cinza)">${esc(p.obs || '')}</td><td class="n"><button class="link" onclick="excluirPesagem(${p.id},${a.id})">apagar</button></td></tr>`).join('')}</table>` : '<div class="vazio">Sem pesagem.</div>'}
+    <h3>Sanidade</h3>${a.sanidade.length ? `<table>${a.sanidade.map(s => `<tr><td>${fd(s.data)}</td><td><b>${esc(s.tipo)}</b>${s.famacha ? ' ' + s.famacha : ''}${s.produto ? ' · ' + esc(s.produto) : ''}${s.dose ? ' ' + esc(s.dose) : ''}<br><small style="color:var(--cinza)">${s.proxima ? 'próxima ' + fd(s.proxima) : ''}</small></td><td class="n">${s.custo ? R$(s.custo) : ''}</td><td class="n"><button class="link" onclick="excluirSanidade(${s.id},${a.id})">apagar</button></td></tr>`).join('')}</table>` : '<div class="vazio">Nada registrado.</div>'}
+    ${a.sexo === 'F' ? `<h3>Parições</h3>${a.paricoes.length ? `<table>${a.paricoes.map(p => `<tr><td>${fd(p.data)}</td><td>${p.vivos} vivo(s), ${p.mortos} morto(s)</td><td>carneiro ${esc(p.pai_brinco || '?')}</td></tr>`).join('')}</table>` : '<div class="vazio">Nenhuma.</div>'}` : ''}
+    <h3>Dinheiro</h3>
+    <div class="kpis"><div class="kpi"><div class="n neg" style="font-size:20px">${R$(a.custos.direto)}</div><div class="r">direto</div></div>
+      <div class="kpi"><div class="n neg" style="font-size:20px">${R$(a.custos.rateado)}</div><div class="r">rateado</div></div>
+      <div class="kpi"><div class="n neg" style="font-size:20px">${R$(a.custos.total)}</div><div class="r">custo total</div></div>
+      <div class="kpi"><div class="n" style="font-size:20px">${R$(a.custos.receita)}</div><div class="r">receita</div></div></div>
+    <div class="acoes"><button class="nao" onclick="fechar('dlgFicha')">Fechar</button></div>`;
+  $('dlgFicha').showModal();
+}
+function setBaixa(s, btn) { E.baixaStatus = s; btn.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('sel')); btn.classList.add('sel'); $('bxValorBox').style.display = s === 'vendido' ? 'block' : 'none'; }
+function abrirBaixa(id) { E.baixaId = id; E.baixaStatus = null; $('bxData').value = hoje(); $('bxValor').value = ''; $('bxMotivo').value = ''; $('dlgBaixa').querySelectorAll('.chip').forEach(c => c.classList.remove('sel')); fechar('dlgFicha'); $('dlgBaixa').showModal(); }
+async function salvarBaixa() {
+  if (!E.baixaStatus) return toast('Escolha vendido, abatido ou morto');
+  try { await api(`/api/ovelhas/animais/${E.baixaId}/saida`, {method: 'POST', body: {status: E.baixaStatus, data: $('bxData').value, valor: $('bxValor').value, motivo: $('bxMotivo').value}});
+    fechar('dlgBaixa'); toast('Baixa registrada'); desenharRebanho(); carregarPainel(); } catch (e) { toast(e.message); }
+}
+async function reativar(id) { await api(`/api/ovelhas/animais/${id}/saida`, {method: 'POST', body: {status: 'ativo'}}); fechar('dlgFicha'); toast('Animal ativo de novo'); desenharRebanho(); }
+async function excluirAnimal(id) { if (!confirm('Excluir esse animal e tudo dele?')) return; try { await api('/api/ovelhas/animais/' + id, {method: 'DELETE'}); fechar('dlgFicha'); toast('Excluído'); desenharRebanho(); } catch (e) { toast(e.message); } }
+async function excluirPesagem(pid, aid) { await api('/api/ovelhas/pesagens/' + pid, {method: 'DELETE'}); abrirFicha(aid); }
+async function excluirSanidade(sid, aid) { await api('/api/ovelhas/sanidade/' + sid, {method: 'DELETE'}); abrirFicha(aid); }
+
+// ---------------------------------------------------------------- reprodução
+async function carregarRepro() {
+  await carregarAnimais();
+  const carneiros = E.ativos.filter(a => a.sexo === 'M');
+  $('chipsCarneiros').innerHTML = carneiros.length ? carneiros.map(c => `<button class="chip ${E.carneiroSel === c.id ? 'sel' : ''}" onclick="escolherCarneiro(${c.id})">🐏 ${rotulo(c)} <small>${c.idade || ''}</small></button>`).join('') : '<div class="vazio">Cadastre um macho.</div>';
+  if (E.carneiroSel && carneiros.some(c => c.id === E.carneiroSel)) await escolherCarneiro(E.carneiroSel); else { $('cruzamento').innerHTML = ''; $('btnMonta').disabled = true; }
+  const m = await api('/api/ovelhas/montas'); E.montasCache = m.montas;
+  $('listaMontas').innerHTML = m.montas.length ? m.montas.map(x => `
+    <div class="it"><div class="ic m">🐏</div><div class="tx"><b>${esc(x.carneiro_brinco)} ${x.aberta ? '<span class="pill">no lote</span>' : ''}</b>
+      <small>de ${fd(x.inicio)} ${x.fim ? 'a ' + fd(x.fim) : '(ainda no lote)'} · parição ${fd(x.paricao_de)} a ${fd(x.paricao_ate)}</small>
+      <small>${x.ovelhas.map(o => (o.pariu ? '✅ ' : '') + esc(o.brinco)).join(', ')}</small>${x.obs ? `<small>${esc(x.obs)}</small>` : ''}</div>
+      <div class="dir">${x.aberta ? `<button class="b s" onclick="fecharMonta(${x.id})">Tirar carneiro</button>` : ''}<br><button class="link" onclick="excluirMonta(${x.id})">apagar</button></div></div>`).join('') : '<div class="vazio">Nenhuma monta.</div>';
+  const p = await api('/api/ovelhas/paricoes');
+  $('listaParicoes').innerHTML = p.paricoes.length ? p.paricoes.map(x => `
+    <div class="it"><div class="ic">🐑</div><div class="tx"><b>${esc(x.mae_brinco)}</b><small>${fd(x.data)} · ${x.vivos} vivo(s), ${x.mortos} morto(s) · carneiro ${esc(x.pai_brinco || '?')}</small>${x.obs ? `<small>${esc(x.obs)}</small>` : ''}</div></div>`).join('') : '<div class="vazio">Nenhuma parição.</div>';
+}
+async function escolherCarneiro(id) {
+  E.carneiroSel = id;
+  $('chipsCarneiros').querySelectorAll('.chip').forEach(c => c.classList.toggle('sel', c.getAttribute('onclick').includes(`(${id})`)));
+  const j = await api('/api/ovelhas/cruzamento/' + id); E.cruz = j;
+  $('cruzamento').innerHTML = j.femeas.length ? `<p style="font-size:14px;color:var(--cinza);margin:6px 0">Toque para escolher quem vai com ele. 🟢 pode · 🟠 evitar · 🔴 não pode.</p>
+    <div class="chips" id="chipsFemeas">${j.femeas.map(f => `<button class="chip ${f.nivel === 'bloqueado' ? '' : ''}" data-id="${f.id}" data-nivel="${f.nivel}" onclick="togFemea(this)" title="${esc(f.motivo)}"><span class="sem ${f.nivel}"></span>${esc(f.brinco)} <small>${f.grau ? esc(f.grau) : (f.idade || '')}</small></button>`).join('')}</div>` : '<div class="vazio">Nenhuma fêmea ativa.</div>';
+  $('btnMonta').disabled = false;
+}
+function togFemea(btn) {
+  if (btn.dataset.nivel === 'bloqueado') { toast('Parentesco próximo: não cruzar'); return; }
+  btn.classList.toggle('sel'); if (btn.dataset.nivel === 'atencao') btn.classList.toggle('at', btn.classList.contains('sel'));
+}
+function abrirMonta() {
+  const ids = selecionados('chipsFemeas'); if (!ids.length) return toast('Escolha as ovelhas');
+  const c = E.ativos.find(a => a.id === E.carneiroSel);
+  $('montaResumo').innerHTML = `<b>${rotulo(c)}</b> com ${ids.length} ovelha(s): ${E.cruz.femeas.filter(f => ids.includes(f.id)).map(f => esc(f.brinco)).join(', ')}`;
+  $('mInicio').value = hoje(); $('mFim').value = ''; $('mObs').value = ''; erroEm('mErro', ''); $('dlgMonta').showModal();
+}
+async function salvarMonta() {
+  try { await api('/api/ovelhas/montas', {method: 'POST', body: {carneiro_id: E.carneiroSel, ovelhas: selecionados('chipsFemeas'), inicio: $('mInicio').value, fim: $('mFim').value, obs: $('mObs').value}});
+    fechar('dlgMonta'); toast('Monta registrada'); carregarRepro(); } catch (e) { erroEm('mErro', e.message); }
+}
+async function fecharMonta(id) { const f = prompt('Data em que o carneiro saiu (AAAA-MM-DD)', hoje()); if (!f) return; await api('/api/ovelhas/montas', {method: 'POST', body: {id, acao: 'fechar', fim: f}}); carregarRepro(); }
+async function excluirMonta(id) { if (!confirm('Apagar essa monta?')) return; try { await api('/api/ovelhas/montas', {method: 'POST', body: {id, acao: 'excluir'}}); carregarRepro(); } catch (e) { toast(e.message); } }
+
+let nCord = 0;
+function addCordeiro() {
+  nCord++; const seq = $('pCordeiros').children.length;
+  const div = document.createElement('div'); div.className = 'duas'; div.style.marginBottom = '6px';
+  div.innerHTML = `<div><input class="cBrinco" placeholder="brinco" value="${E.sugestaoBrinco(seq)}"></div>
+    <div style="display:flex;gap:6px"><button class="chip cSexo sel" data-s="F" onclick="togSexoCord(this)">♀</button><button class="chip cSexo" data-s="M" onclick="togSexoCord(this)">♂</button><input class="cKg" placeholder="kg" inputmode="decimal" style="width:80px"><button class="chip" onclick="this.parentElement.parentElement.remove()">✕</button></div>`;
+  $('pCordeiros').appendChild(div);
+}
+E.sugestaoBrinco = seq => { const [ano, n] = (E.proxBrinco || '00-000').split('-'); return `${ano}-${String(+n + seq).padStart(3, '0')}`; };
+function togSexoCord(btn) { btn.parentElement.querySelectorAll('.cSexo').forEach(c => c.classList.remove('sel')); btn.classList.add('sel'); }
+async function abrirParicao() {
+  await carregarAnimais(); E.proxBrinco = (await api('/api/ovelhas/proximo-brinco')).brinco;
+  const fem = E.ativos.filter(a => a.sexo === 'F');
+  $('pMae').innerHTML = fem.map(a => `<option value="${a.id}">${rotulo(a)}</option>`).join('');
+  $('pPai').innerHTML = '<option value="">Desconhecido</option>' + E.animais.filter(a => a.sexo === 'M').map(a => `<option value="${a.id}">${rotulo(a)}</option>`).join('');
+  $('pData').value = hoje(); $('pMortos').value = 0; $('pObs').value = ''; $('pCordeiros').innerHTML = ''; erroEm('pErro', ''); addCordeiro(); paiDaMonta();
+  $('dlgParicao').showModal();
+}
+function paiDaMonta() {
+  const mae = +$('pMae').value; const m = E.montasCache.find(x => x.ovelhas.some(o => o.id === mae && !o.pariu));
+  E.montaDaParicao = m ? m.id : null; if (m) $('pPai').value = m.carneiro_id;
+}
+async function salvarParicao() {
+  const cordeiros = [...$('pCordeiros').children].map(d => ({brinco: d.querySelector('.cBrinco').value, sexo: d.querySelector('.cSexo.sel').dataset.s, kg: d.querySelector('.cKg').value}));
+  try { await api('/api/ovelhas/paricoes', {method: 'POST', body: {mae_id: +$('pMae').value, pai_id: $('pPai').value || null, monta_id: E.montaDaParicao, data: $('pData').value, cordeiros, vivos: cordeiros.length, mortos: +$('pMortos').value || 0, obs: $('pObs').value}});
+    fechar('dlgParicao'); toast(`Parição registrada: ${cordeiros.length} cordeiro(s)`); carregarRepro(); } catch (e) { erroEm('pErro', e.message); }
+}
+
+// ---------------------------------------------------------------- sanidade
+const TIPOS = ['Vermífugo', 'Vacina', 'Famacha', 'Casqueamento', 'Carrapaticida/piolho', 'Vitamina/mineral', 'Outro'];
+function setTipo(t, btn) { E.sanTipo = t; $('chipsTipo').querySelectorAll('.chip').forEach(c => c.classList.remove('sel')); btn.classList.add('sel'); $('famachaBox').style.display = t === 'Famacha' ? 'block' : 'none'; }
+function famacha(n, btn) { E.famacha = n; $('chipsFamacha').querySelectorAll('.chip').forEach(c => c.classList.remove('sel')); btn.classList.add('sel'); }
+async function desenharSanidade() {
+  await carregarAnimais();
+  $('chipsTipo').innerHTML = TIPOS.map(t => `<button class="chip ${E.sanTipo === t ? 'sel' : ''}" onclick="setTipo('${t}',this)">${t}</button>`).join('');
+  if (!$('sanData').value) $('sanData').value = hoje();
+  $('chipsSanAnimais').innerHTML = E.ativos.map(a => `<button class="chip" data-id="${a.id}" onclick="this.classList.toggle('sel')">${sexoIc(a)} ${esc(a.brinco)}</button>`).join('');
+  const j = await api('/api/ovelhas/sanidade');
+  $('listaSanidade').innerHTML = j.sanidade.length ? j.sanidade.map(s => `<div class="it"><div class="ic">💉</div><div class="tx"><b>${esc(s.brinco)} · ${esc(s.tipo)}${s.famacha ? ' ' + s.famacha : ''}</b><small>${fd(s.data)}${s.produto ? ' · ' + esc(s.produto) : ''}${s.dose ? ' ' + esc(s.dose) : ''}${s.proxima ? ' · próxima ' + fd(s.proxima) : ''}</small></div><div class="dir">${s.custo ? R$(s.custo) : ''}</div></div>`).join('') : '<div class="vazio">Nada registrado.</div>';
+}
+async function salvarSanidade() {
+  const ids = selecionados('chipsSanAnimais'); if (!ids.length) return toast('Escolha os animais');
+  if (E.sanTipo === 'Famacha' && !E.famacha) return toast('Escolha a nota Famacha');
+  try { const r = await api('/api/ovelhas/sanidade', {method: 'POST', body: {animais: ids, tipo: E.sanTipo, data: $('sanData').value, repete_dias: $('sanRepete').value || null, produto: $('sanProduto').value, dose: $('sanDose').value, custo_total: $('sanCusto').value, famacha: E.sanTipo === 'Famacha' ? E.famacha : null}});
+    toast(`Registrado em ${r.aplicados} animal(is)`); $('sanCusto').value = ''; selNenhum('chipsSanAnimais'); desenharSanidade(); } catch (e) { toast(e.message); }
+}
+
+// ---------------------------------------------------------------- custos
+async function carregarCustos() {
+  await carregarAnimais();
+  const ano = $('anoCustos').value || '';
+  const c = await api('/api/ovelhas/custos' + (ano ? '?ano=' + ano : ''));
+  const sel = $('anoCustos'); const atual = sel.value;
+  sel.innerHTML = '<option value="">Desde o início</option>' + c.anos.map(a => `<option value="${a}">${a}</option>`).join(''); sel.value = atual;
+  $('kpisCustos').innerHTML = `<div class="kpi"><div class="n neg din">${R$(c.total_despesa)}</div><div class="r">gasto</div></div><div class="kpi"><div class="n din">${R$(c.total_receita)}</div><div class="r">recebido</div></div>
+    <div class="kpi"><div class="n din ${c.resultado < 0 ? 'neg' : ''}">${R$(c.resultado)}</div><div class="r">resultado</div></div><div class="kpi"><div class="n neg din">${R$(c.custo_por_cabeca)}</div><div class="r">por cabeça ativa (${c.ativos})</div></div>`;
+  $('custosCat').innerHTML = c.categorias.length ? `<table>${c.categorias.map(x => `<tr><td>${x.tipo === 'receita' ? '↑' : '↓'} ${esc(x.categoria)}</td><td class="n" style="color:${x.tipo === 'receita' ? 'var(--ok)' : 'var(--carne)'}">${R$(x.valor)}</td></tr>`).join('')}</table>` : '<div class="vazio">Nada lançado.</div>';
+  $('custosAnimal').innerHTML = c.animais.length ? `<table><tr><th>Animal</th><th class="n">Direto</th><th class="n">Rateado</th><th class="n">Total</th><th class="n">Receita</th></tr>${c.animais.map(a => `<tr onclick="abrirFicha(${a.id})"><td>${a.sexo === 'M' ? '♂' : '♀'} ${esc(a.brinco)}${a.status !== 'ativo' ? ' <small>(' + a.status + ')</small>' : ''}</td><td class="n">${R$(a.direto)}</td><td class="n">${R$(a.rateado)}</td><td class="n"><b>${R$(a.total)}</b></td><td class="n">${a.receita ? R$(a.receita) : ''}</td></tr>`).join('')}</table>` : '';
+  const l = await api('/api/ovelhas/lancamentos' + (ano ? '?ano=' + ano : ''));
+  E.cats = {despesa: l.categorias_despesa, receita: l.categorias_receita};
+  $('listaLanc').innerHTML = l.lancamentos.length ? l.lancamentos.map(x => `<div class="it"><div class="ic">${x.tipo === 'receita' ? '💵' : '🧾'}</div><div class="tx"><b>${esc(x.categoria)}</b><small>${fd(x.data)}${x.descricao ? ' · ' + esc(x.descricao) : ''}${x.brinco ? ' · ' + esc(x.brinco) : ' · rebanho todo'}</small></div><div class="dir" style="color:${x.tipo === 'receita' ? 'var(--ok)' : 'var(--carne)'}">${R$(x.valor)}${x.origem ? '' : `<br><button class="link" onclick="excluirLanc(${x.id})">apagar</button>`}</div></div>`).join('') : '<div class="vazio">Nenhum lançamento.</div>';
+}
+function abrirLancamento(tipo) {
+  E.lancTipo = tipo; E.lancCat = null; $('lancTitulo').textContent = tipo === 'despesa' ? 'Despesa' : 'Receita';
+  const cats = (E.cats || {despesa: ['Ração e grão', 'Sal mineral', 'Medicamentos e vacinas', 'Cerca e estrutura', 'Brincos e identificação', 'Mão de obra', 'Frete', 'Outros'], receita: ['Venda de animal', 'Venda de lã', 'Outros']})[tipo];
+  $('lCats').innerHTML = cats.map(c => `<button class="chip" onclick="E.lancCat='${c}';this.parentElement.querySelectorAll('.chip').forEach(x=>x.classList.remove('sel'));this.classList.add('sel')">${c}</button>`).join('');
+  $('lData').value = hoje(); $('lValor').value = ''; $('lDesc').value = ''; erroEm('lErro', '');
+  $('lAnimal').innerHTML = '<option value="">Rebanho todo</option>' + E.animais.map(a => `<option value="${a.id}">${rotulo(a)}</option>`).join('');
+  $('dlgLanc').showModal();
+}
+async function salvarLancamento() {
+  if (!E.lancCat) return erroEm('lErro', 'Escolha a categoria');
+  try { await api('/api/ovelhas/lancamentos', {method: 'POST', body: {tipo: E.lancTipo, data: $('lData').value, valor: $('lValor').value, categoria: E.lancCat, descricao: $('lDesc').value, animal_id: $('lAnimal').value || null}});
+    fechar('dlgLanc'); toast('Lançado'); carregarCustos(); } catch (e) { erroEm('lErro', e.message); }
+}
+async function excluirLanc(id) { if (!confirm('Apagar lançamento?')) return; try { await api('/api/ovelhas/lancamentos/' + id, {method: 'DELETE'}); carregarCustos(); } catch (e) { toast(e.message); } }
+
+// ---------------------------------------------------------------- mais
+async function desenharMais() {
+  await carregarAnimais();
+  if (!$('pesData').value) $('pesData').value = hoje();
+  $('pesLinhas').innerHTML = E.ativos.map(a => `<div class="peso-linha"><b>${sexoIc(a)} ${esc(a.brinco)}</b><small>${a.ultimo_peso ? a.ultimo_peso + ' kg' : ''}</small><input class="pesKg" data-id="${a.id}" inputmode="decimal" placeholder="kg"></div>`).join('') || '<div class="vazio">Sem animais ativos.</div>';
+  $('cfgRaca').value = E.config.raca_padrao || ''; $('cfgNome').value = E.config.nome_rebanho || '';
+}
+async function salvarPesagens() {
+  const itens = [...document.querySelectorAll('.pesKg')].filter(i => i.value).map(i => ({animal_id: +i.dataset.id, kg: i.value}));
+  if (!itens.length) return toast('Nenhum peso digitado');
+  try { const r = await api('/api/ovelhas/pesagens', {method: 'POST', body: {data: $('pesData').value, itens}}); toast(`${r.n} peso(s) salvo(s)`); desenharMais(); } catch (e) { toast(e.message); }
+}
+async function salvarConfig() { E.config = await api('/api/ovelhas/config', {method: 'POST', body: {raca_padrao: $('cfgRaca').value, nome_rebanho: $('cfgNome').value}}); $('tituloApp').textContent = E.config.nome_rebanho || 'Ovelhas · Tafona'; toast('Salvo'); }
+
+// ---------------------------------------------------------------- início
+(async () => {
+  E.config = await api('/api/ovelhas/config');
+  $('tituloApp').textContent = E.config.nome_rebanho || 'Ovelhas · Tafona';
+  await carregarAnimais();
+  carregarPainel();
+})();
+</script>
+</body>
+</html>
