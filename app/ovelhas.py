@@ -7,13 +7,18 @@ Sem login no app: o controle de acesso é feito pela infraestrutura, na frente d
 """
 import csv
 import io
+import json
+import logging
 import os
 import re
 import sqlite3
+import threading
+import time
 import zipfile
 from contextlib import closing
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, Response
@@ -24,7 +29,14 @@ DB = DADOS / "ovelhas.db"
 
 router = APIRouter()
 
+FUSO = ZoneInfo("America/Sao_Paulo")
+log = logging.getLogger("ovelhas")
+
 GESTACAO_DIAS = 150          # ovelha: 147–152 dias
+MONTA_DIAS = 45              # carneiro no lote: ~2 a 3 cios
+DESMAME_DIAS = (60, 90)      # janela de desmame do cordeiro
+SEPARAR_MACHO_MESES = 4      # borrego inteiro começa a cobrir: separar das fêmeas
+HORA_PUSH = 7                # aviso diário no celular
 IDADE_PUBERDADE_MESES = 7    # a partir daí a borrega pode emprenhar e entra nos alertas
 CATEGORIAS_DESPESA = ["Animais", "Ração e grão", "Sal mineral", "Medicamentos e vacinas", "Cerca e estrutura",
                       "Brincos e identificação", "Mão de obra", "Frete", "Outros"]
@@ -125,11 +137,26 @@ def criar_banco():
                 origem     TEXT,                              -- 'sanidade:<grupo>' | 'animal:<id>' | NULL (manual)
                 criado_em  TEXT NOT NULL DEFAULT (datetime('now'))
             );
+            CREATE TABLE IF NOT EXISTS avisos_estado (
+                chave      TEXT PRIMARY KEY,         -- identifica o aviso (tipo:animal:referência)
+                feito_em   TEXT,                     -- marcado como feito (não volta)
+                adiado_ate TEXT                      -- some até essa data
+            );
+            CREATE TABLE IF NOT EXISTS push_inscricoes (
+                endpoint   TEXT PRIMARY KEY,
+                p256dh     TEXT NOT NULL,
+                auth       TEXT NOT NULL,
+                aparelho   TEXT,
+                criado_em  TEXT NOT NULL DEFAULT (datetime('now'))
+            );
             CREATE INDEX IF NOT EXISTS ix_san_animal ON sanidade(animal_id, data);
             CREATE INDEX IF NOT EXISTS ix_pes_animal ON pesagens(animal_id, data);
             CREATE INDEX IF NOT EXISTS ix_lan_data ON lancamentos(data);
             """
         )
+        colunas = {r["name"] for r in con.execute("PRAGMA table_info(animais)")}
+        if "desmame" not in colunas:
+            con.execute("ALTER TABLE animais ADD COLUMN desmame TEXT")   # data do desmame (cordeiro nascido aqui)
         for chave, valor in [("raca_padrao", "Hampshire Down"), ("nome_rebanho", "Projeto Borrego Tafona")]:
             con.execute("INSERT OR IGNORE INTO config (chave, valor) VALUES (?, ?)", (chave, valor))
         # nome antigo de fábrica -> nome do projeto (não mexe se o Mau já tiver trocado)
@@ -137,8 +164,13 @@ def criar_banco():
 
 
 # ---------------------------------------------------------------- utilidades
+def dia():
+    """Hoje no fuso da fazenda (o container roda em UTC)."""
+    return datetime.now(FUSO).date()
+
+
 def hoje():
-    return date.today().isoformat()
+    return dia().isoformat()
 
 
 def d(s):
@@ -152,7 +184,7 @@ def idade_meses(nasc, ref=None):
     n = d(nasc)
     if not n:
         return None
-    r = d(ref) or date.today()
+    r = d(ref) or dia()
     return (r.year - n.year) * 12 + (r.month - n.month) - (1 if r.day < n.day else 0)
 
 
@@ -161,7 +193,7 @@ def idade_txt(nasc):
     if m is None:
         return ""
     if m < 1:
-        return f"{(date.today() - d(nasc)).days} dias"
+        return f"{(dia() - d(nasc)).days} dias"
     if m < 24:
         return f"{m} meses"
     return f"{m // 12} anos" + (f" e {m % 12} m" if m % 12 else "")
@@ -476,7 +508,7 @@ def _montas(con):
             """SELECT a.id, a.brinco, a.nome,
                       (SELECT COUNT(*) FROM paricoes p WHERE p.monta_id = ? AND p.mae_id = a.id) AS pariu
                FROM monta_ovelhas mo JOIN animais a ON a.id = mo.ovelha_id WHERE mo.monta_id = ? ORDER BY a.brinco""", (m["id"], m["id"]))]
-        ini, fim = d(m["inicio"]), d(m["fim"]) or date.today()
+        ini, fim = d(m["inicio"]), d(m["fim"]) or dia()
         m["paricao_de"] = (ini + timedelta(days=GESTACAO_DIAS - 5)).isoformat()
         m["paricao_ate"] = (fim + timedelta(days=GESTACAO_DIAS + 5)).isoformat()
         m["aberta"] = m["fim"] is None
@@ -751,54 +783,161 @@ def custos(ano: int | None = None):
 
 
 # ---------------------------------------------------------------- painel e alertas
-def _alertas(con):
-    alertas = []
-    hj = date.today()
-    # sanidade atrasada: última 'proxima' por animal e tipo, já vencida e sem aplicação posterior
-    rows = con.execute("""SELECT s.animal_id, a.brinco, s.tipo, MAX(s.proxima) AS proxima, MAX(s.data) AS ultima
+def _aviso(lista, chave, nivel, tipo, texto, animal_id=None, acao=None, rotulo=None, ref=None, manual=False):
+    """nivel: alto (vermelho) | medio (laranja) | baixo (cinza). manual=True: some com 'Feito'."""
+    lista.append({"chave": chave, "nivel": nivel, "tipo": tipo, "texto": texto, "animal_id": animal_id,
+                  "acao": acao, "rotulo": rotulo, "ref": ref, "manual": manual})
+
+
+def _alertas(con, todos=False):
+    """Avisos e tarefas de manejo. Filtra os marcados como feitos e os adiados (salvo todos=True)."""
+    av = []
+    hj = dia()
+    # --- sanidade com data marcada (repetição)
+    rows = con.execute("""SELECT s.animal_id, a.brinco, s.tipo, MAX(s.proxima) AS proxima
                           FROM sanidade s JOIN animais a ON a.id = s.animal_id
                           WHERE a.status='ativo' AND s.proxima IS NOT NULL GROUP BY s.animal_id, s.tipo""").fetchall()
     for r in rows:
-        ultima_do_tipo = con.execute("SELECT MAX(data) FROM sanidade WHERE animal_id=? AND tipo=?", (r["animal_id"], r["tipo"])).fetchone()[0]
-        if r["proxima"] and d(r["proxima"]) <= hj and ultima_do_tipo < r["proxima"]:
-            atraso = (hj - d(r["proxima"])).days
-            alertas.append({"nivel": "alto" if atraso > 15 else "medio", "tipo": "sanidade", "animal_id": r["animal_id"],
-                            "texto": f"{r['brinco']}: {r['tipo']} vencido há {atraso} dia(s)" if atraso else f"{r['brinco']}: {r['tipo']} vence hoje"})
-        elif r["proxima"] and 0 < (d(r["proxima"]) - hj).days <= 7 and ultima_do_tipo < r["proxima"]:
-            alertas.append({"nivel": "baixo", "tipo": "sanidade", "animal_id": r["animal_id"],
-                            "texto": f"{r['brinco']}: {r['tipo']} em {(d(r['proxima']) - hj).days} dia(s)"})
-    # famacha 4 ou 5 na última avaliação
+        ultima = con.execute("SELECT MAX(data) FROM sanidade WHERE animal_id=? AND tipo=?", (r["animal_id"], r["tipo"])).fetchone()[0]
+        if ultima >= r["proxima"]:
+            continue
+        falta = (d(r["proxima"]) - hj).days
+        chave = f"san:{r['animal_id']}:{r['tipo']}:{r['proxima']}"
+        if falta < 0:
+            _aviso(av, chave, "alto" if -falta > 15 else "medio", "sanidade", f"{r['brinco']}: {r['tipo']} vencido há {-falta} dia(s)",
+                   r["animal_id"], "sanidade", f"Aplicar {r['tipo'].lower()}", r["tipo"])
+        elif falta == 0:
+            _aviso(av, chave, "medio", "sanidade", f"{r['brinco']}: {r['tipo']} vence hoje", r["animal_id"], "sanidade", f"Aplicar {r['tipo'].lower()}", r["tipo"])
+        elif falta <= 7:
+            _aviso(av, chave, "baixo", "sanidade", f"{r['brinco']}: {r['tipo']} em {falta} dia(s)", r["animal_id"], "sanidade", f"Aplicar {r['tipo'].lower()}", r["tipo"])
+    # --- Famacha 4 ou 5 na última avaliação, sem vermífugo depois dela
     for r in con.execute("""SELECT a.brinco, s.animal_id, s.famacha, s.data FROM sanidade s JOIN animais a ON a.id=s.animal_id
-                            WHERE s.tipo='Famacha' AND a.status='ativo' AND s.id = (SELECT id FROM sanidade WHERE animal_id=s.animal_id AND tipo='Famacha' ORDER BY data DESC, id DESC LIMIT 1)
-                            AND s.famacha >= 4"""):
-        alertas.append({"nivel": "alto", "tipo": "famacha", "animal_id": r["animal_id"], "texto": f"{r['brinco']}: Famacha {r['famacha']} em {fmt_data(r['data'])} — vermifugar"})
-    # parições previstas
+                            WHERE s.tipo='Famacha' AND a.status='ativo'
+                              AND s.id = (SELECT id FROM sanidade WHERE animal_id=s.animal_id AND tipo='Famacha' ORDER BY data DESC, id DESC LIMIT 1)
+                              AND s.famacha >= 4"""):
+        verm = con.execute("SELECT COUNT(*) FROM sanidade WHERE animal_id=? AND tipo='Vermífugo' AND data >= ?", (r["animal_id"], r["data"])).fetchone()[0]
+        if not verm:
+            _aviso(av, f"famacha:{r['animal_id']}:{r['data']}", "alto", "famacha", f"{r['brinco']}: Famacha {r['famacha']} em {fmt_data(r['data'])}. Vermifugar",
+                   r["animal_id"], "sanidade", "Aplicar vermífugo", "Vermífugo")
+    # --- Famacha do rebanho na época do verme (dez a mar): a cada 15 dias
+    if hj.month in (12, 1, 2, 3) and con.execute("SELECT COUNT(*) FROM animais WHERE status='ativo'").fetchone()[0]:
+        ult = con.execute("SELECT MAX(s.data) FROM sanidade s JOIN animais a ON a.id=s.animal_id WHERE s.tipo='Famacha' AND a.status='ativo'").fetchone()[0]
+        if ult is None or (hj - d(ult)).days >= 15:
+            semana = hj.isocalendar()
+            _aviso(av, f"famacha-rebanho:{semana[0]}-{semana[1]}", "medio", "famacha",
+                   "Famacha do rebanho: época de verme, avaliar a cada 15 dias" + (f" (último {fmt_data(ult)})" if ult else ""),
+                   None, "sanidade", "Fazer Famacha", "Famacha")
+    # --- monta: tirar o carneiro, vacina pré-parto, parição
     for m in _montas(con):
+        if m["aberta"]:
+            dias_lote = (hj - d(m["inicio"])).days
+            if dias_lote >= MONTA_DIAS:
+                _aviso(av, f"tirar-carneiro:{m['id']}", "alto" if dias_lote >= MONTA_DIAS + 15 else "medio", "monta",
+                       f"Tirar o carneiro {m['carneiro_brinco']} do lote: está há {dias_lote} dias com as ovelhas", None,
+                       "tirar_carneiro", "Tirar carneiro", m["id"])
+        de, ate = d(m["paricao_de"]), d(m["paricao_ate"])
         for o in m["ovelhas"]:
             if o["pariu"]:
                 continue
-            de, ate = d(m["paricao_de"]), d(m["paricao_ate"])
+            if de - timedelta(days=40) <= hj < de:
+                vac = con.execute("SELECT COUNT(*) FROM sanidade WHERE animal_id=? AND tipo='Vacina' AND data >= ?", (o["id"], m["inicio"])).fetchone()[0]
+                if not vac:
+                    _aviso(av, f"vacina-pre-parto:{m['id']}:{o['id']}", "medio", "sanidade",
+                           f"{o['brinco']}: vacinar antes do parto (previsto a partir de {fmt_data(m['paricao_de'])}); protege o cordeiro pelo colostro",
+                           o["id"], "sanidade", "Aplicar vacina", "Vacina")
             if de - timedelta(days=14) <= hj <= ate:
-                alertas.append({"nivel": "medio", "tipo": "paricao", "animal_id": o["id"],
-                                "texto": f"{o['brinco']}: parição prevista entre {fmt_data(m['paricao_de'])} e {fmt_data(m['paricao_ate'])}"})
+                _aviso(av, f"paricao:{m['id']}:{o['id']}", "medio", "paricao",
+                       f"{o['brinco']}: parição prevista entre {fmt_data(m['paricao_de'])} e {fmt_data(m['paricao_ate'])}. Deixar perto da sede",
+                       o["id"], "paricao", "Registrar parição", m["id"])
             elif hj > ate:
-                alertas.append({"nivel": "baixo", "tipo": "paricao", "animal_id": o["id"],
-                                "texto": f"{o['brinco']}: passou da data prevista e não há parição registrada (vazia?)"})
-    # carneiro: filhas chegando à idade de cruzar
-    pais = _pais(con)
+                _aviso(av, f"vazia:{m['id']}:{o['id']}", "baixo", "paricao",
+                       f"{o['brinco']}: passou da data prevista e não há parição registrada (vazia?)", o["id"], "ficha", "Abrir ficha", None, manual=True)
+    # --- cordeiros nascidos aqui: vacina, desmame, separar machos
+    for a in con.execute("SELECT id, brinco, sexo, nascimento, desmame FROM animais WHERE status='ativo' AND origem='nascido' AND nascimento IS NOT NULL"):
+        idade = (hj - d(a["nascimento"])).days
+        if 30 <= idade <= 120:
+            vac = con.execute("SELECT COUNT(*) FROM sanidade WHERE animal_id=? AND tipo='Vacina'", (a["id"],)).fetchone()[0]
+            if not vac:
+                _aviso(av, f"vacina-cordeiro:{a['id']}", "medio", "sanidade", f"Cordeiro {a['brinco']}: primeira vacina (está com {idade} dias)",
+                       a["id"], "sanidade", "Aplicar vacina", "Vacina")
+        if not a["desmame"] and idade >= DESMAME_DIAS[0]:
+            _aviso(av, f"desmame:{a['id']}", "alto" if idade > DESMAME_DIAS[1] + 20 else ("medio" if idade >= 75 else "baixo"), "manejo",
+                   f"Cordeiro {a['brinco']}: hora do desmame ({idade} dias). Separar da mãe", a["id"], "desmame", "Registrar desmame")
+        if a["sexo"] == "M" and (idade_meses(a["nascimento"]) or 0) >= SEPARAR_MACHO_MESES:
+            _aviso(av, f"separar-macho:{a['id']}", "medio", "manejo",
+                   f"Borrego {a['brinco']}: {idade_meses(a['nascimento'])} meses. Separar das fêmeas (já pode cobrir) ou castrar",
+                   a["id"], "ficha", "Abrir ficha", None, manual=True)
+    # --- carneiro: filhas chegando à idade de cruzar
     for c in con.execute("SELECT id, brinco FROM animais WHERE sexo='M' AND status='ativo'"):
-        filhas = [f for f in con.execute("SELECT id, brinco, nascimento FROM animais WHERE sexo='F' AND status='ativo' AND pai_id=?", (c["id"],))
+        filhas = [f for f in con.execute("SELECT id, nascimento FROM animais WHERE sexo='F' AND status='ativo' AND pai_id=?", (c["id"],))
                   if (idade_meses(f["nascimento"]) or 0) >= IDADE_PUBERDADE_MESES - 1]
         if filhas:
-            alertas.append({"nivel": "medio", "tipo": "genetica", "animal_id": c["id"],
-                            "texto": f"Carneiro {c['brinco']} tem {len(filhas)} filha(s) em idade de cruzar: hora de outro carneiro ou de separar"})
-    # sem pesagem há mais de 60 dias
-    for r in con.execute("""SELECT a.id, a.brinco, (SELECT MAX(data) FROM pesagens WHERE animal_id=a.id) AS ult FROM animais a WHERE a.status='ativo'"""):
-        if r["ult"] is None or (hj - d(r["ult"])).days > 60:
-            alertas.append({"nivel": "baixo", "tipo": "pesagem", "animal_id": r["id"],
-                            "texto": f"{r['brinco']}: " + ("nunca foi pesado" if r["ult"] is None else f"sem pesagem desde {fmt_data(r['ult'])}")})
+            _aviso(av, f"genetica:{c['id']}:{len(filhas)}", "medio", "genetica",
+                   f"Carneiro {c['brinco']} tem {len(filhas)} filha(s) em idade de cruzar: separar as borregas ou trocar o carneiro",
+                   c["id"], "ficha", "Abrir ficha", None, manual=True)
+    # --- pesagem atrasada (um aviso só para o rebanho)
+    sem = [r["brinco"] for r in con.execute("SELECT a.brinco, (SELECT MAX(data) FROM pesagens WHERE animal_id=a.id) AS ult FROM animais a WHERE a.status='ativo'")
+           if r["ult"] is None or (hj - d(r["ult"])).days > 60]
+    if sem:
+        _aviso(av, f"pesagem:{hj.year}-{hj.month}", "baixo", "pesagem",
+               f"Pesar: {len(sem)} animal(is) sem pesagem há mais de 60 dias ({', '.join(sem[:6])}{'…' if len(sem) > 6 else ''})", None, "pesagem", "Pesar")
+    # --- feitos e adiados
+    if not todos:
+        estado = {r["chave"]: r for r in con.execute("SELECT * FROM avisos_estado")}
+        def vale(a):
+            e = estado.get(a["chave"])
+            if not e:
+                return True
+            if e["feito_em"]:
+                return False
+            return not (e["adiado_ate"] and e["adiado_ate"] >= hj.isoformat())
+        av = [a for a in av if vale(a)]
     ordem = {"alto": 0, "medio": 1, "baixo": 2}
-    return sorted(alertas, key=lambda x: ordem[x["nivel"]])
+    return sorted(av, key=lambda x: ordem[x["nivel"]])
+
+
+def _pendentes(avisos):
+    """Quantos contam para a bolinha vermelha: vermelhos e laranjas."""
+    return sum(1 for a in avisos if a["nivel"] in ("alto", "medio"))
+
+
+@router.get("/api/ovelhas/avisos")
+def avisos():
+    with closing(db()) as con:
+        av = _alertas(con)
+        return {"avisos": av, "pendentes": _pendentes(av)}
+
+
+@router.post("/api/ovelhas/avisos/estado")
+async def estado_aviso(req: Request):
+    """{"chave": "...", "acao": "feito" | "adiar", "dias": 7}"""
+    b = await req.json()
+    chave = texto(b.get("chave"), 120)
+    if not chave:
+        raise HTTPException(400, "aviso sem chave")
+    with closing(db()) as con, con:
+        if b.get("acao") == "feito":
+            con.execute("INSERT INTO avisos_estado (chave, feito_em) VALUES (?, ?) ON CONFLICT(chave) DO UPDATE SET feito_em = excluded.feito_em",
+                        (chave, hoje()))
+        elif b.get("acao") == "adiar":
+            ate = (dia() + timedelta(days=max(1, min(60, int(b.get("dias", 7)))))).isoformat()
+            con.execute("INSERT INTO avisos_estado (chave, adiado_ate) VALUES (?, ?) ON CONFLICT(chave) DO UPDATE SET adiado_ate = excluded.adiado_ate",
+                        (chave, ate))
+        else:
+            raise HTTPException(400, "ação inválida")
+        av = _alertas(con)
+        return {"avisos": av, "pendentes": _pendentes(av)}
+
+
+@router.post("/api/ovelhas/animais/{aid}/desmame")
+async def desmame(aid: int, req: Request):
+    b = await req.json()
+    with closing(db()) as con, con:
+        _animal_por_id(con, aid)
+        con.execute("UPDATE animais SET desmame = ? WHERE id = ?", (data_ok(b.get("data"), False) or hoje(), aid))
+        if b.get("kg"):
+            con.execute("INSERT INTO pesagens (animal_id, data, kg, obs) VALUES (?,?,?,'desmame')", (aid, data_ok(b.get("data"), False) or hoje(), num(b["kg"])))
+        return {"ok": True}
 
 
 def fmt_data(s):
@@ -808,7 +947,7 @@ def fmt_data(s):
 @router.get("/api/ovelhas/painel")
 def painel():
     with closing(db()) as con:
-        hj = date.today()
+        hj = dia()
         ativos = con.execute("SELECT id, sexo, nascimento FROM animais WHERE status='ativo'").fetchall()
         cont = {"total": len(ativos), "ovelhas": 0, "carneiros": 0, "borregas": 0, "borregos": 0, "cordeiros": 0}
         for a in ativos:
@@ -839,7 +978,8 @@ def painel():
             "custo_por_cabeca_ano": round((fin["d"] or 0) / cont["total"], 2) if cont["total"] else 0,
             "paricoes_ano": dict(pari),
             "proximas_paricoes": proximas[:10],
-            "alertas": _alertas(con),
+            "alertas": (av := _alertas(con)),
+            "pendentes": _pendentes(av),
             "montas_abertas": [m for m in _montas(con) if m["aberta"]],
         }
 
@@ -868,7 +1008,7 @@ def exportar():
     with closing(db()) as con, zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         consultas = {
             "animais": """SELECT a.id, a.brinco, a.nome, a.sexo, a.raca, a.nascimento, p.brinco AS pai, m.brinco AS mae, a.origem, a.entrada,
-                                 a.valor_compra, a.status, a.saida, a.valor_saida, a.motivo_saida, a.obs
+                                 a.valor_compra, a.desmame, a.status, a.saida, a.valor_saida, a.motivo_saida, a.obs
                           FROM animais a LEFT JOIN animais p ON p.id=a.pai_id LEFT JOIN animais m ON m.id=a.mae_id ORDER BY a.brinco""",
             "montas": """SELECT mo.id, c.brinco AS carneiro, mo.inicio, mo.fim, group_concat(o.brinco, ' ') AS ovelhas, mo.obs
                          FROM montas mo JOIN animais c ON c.id=mo.carneiro_id LEFT JOIN monta_ovelhas x ON x.monta_id=mo.id
@@ -893,6 +1033,142 @@ def exportar():
     buf.seek(0)
     nome = f"ovelhas-tafona-{hoje()}.zip"
     return Response(buf.read(), media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="{nome}"'})
+
+
+# ---------------------------------------------------------------- notificações no celular (Web Push)
+# Chaves VAPID geradas na primeira subida e guardadas em /dados (entram no backup junto com o banco).
+VAPID_ARQ = DADOS / "ovelhas-vapid.pem"
+VAPID_CONTATO = "mailto:tafona@maugrando.com.br"
+
+
+def _vapid():
+    from py_vapid import Vapid02
+    if not VAPID_ARQ.exists():
+        v = Vapid02()
+        v.generate_keys()
+        VAPID_ARQ.write_bytes(v.private_pem())
+        os.chmod(VAPID_ARQ, 0o600)
+    return Vapid02.from_pem(VAPID_ARQ.read_bytes())
+
+
+def _vapid_publica():
+    from cryptography.hazmat.primitives import serialization
+    from py_vapid import b64urlencode
+    pub = _vapid().public_key.public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+    return b64urlencode(pub)
+
+
+@router.get("/api/ovelhas/push/chave")
+def push_chave():
+    with closing(db()) as con:
+        n = con.execute("SELECT COUNT(*) FROM push_inscricoes").fetchone()[0]
+    return {"chave": _vapid_publica(), "inscritos": n}
+
+
+@router.post("/api/ovelhas/push/inscrever")
+async def push_inscrever(req: Request):
+    b = await req.json()
+    sub = b.get("inscricao") or {}
+    chaves = sub.get("keys") or {}
+    if not sub.get("endpoint") or not chaves.get("p256dh") or not chaves.get("auth"):
+        raise HTTPException(400, "inscrição incompleta")
+    with closing(db()) as con, con:
+        con.execute("INSERT OR REPLACE INTO push_inscricoes (endpoint, p256dh, auth, aparelho) VALUES (?,?,?,?)",
+                    (sub["endpoint"], chaves["p256dh"], chaves["auth"], texto(b.get("aparelho"), 120)))
+    return {"ok": True}
+
+
+@router.post("/api/ovelhas/push/sair")
+async def push_sair(req: Request):
+    b = await req.json()
+    with closing(db()) as con, con:
+        con.execute("DELETE FROM push_inscricoes WHERE endpoint = ?", (str(b.get("endpoint", "")),))
+    return {"ok": True}
+
+
+def _enviar_push(titulo, corpo, pendentes):
+    """Manda para todos os aparelhos inscritos. Retorna (enviados, falhas)."""
+    from pywebpush import WebPushException, webpush
+    carga = json.dumps({"titulo": titulo, "corpo": corpo, "pendentes": pendentes, "url": "/ovelhas"}, ensure_ascii=False)
+    with closing(db()) as con:
+        inscritos = con.execute("SELECT endpoint, p256dh, auth FROM push_inscricoes").fetchall()
+    ok = falha = 0
+    vapid = _vapid()
+    for i in inscritos:
+        try:
+            webpush({"endpoint": i["endpoint"], "keys": {"p256dh": i["p256dh"], "auth": i["auth"]}}, carga,
+                    vapid_private_key=vapid, vapid_claims={"sub": VAPID_CONTATO}, ttl=12 * 3600, timeout=15)
+            ok += 1
+        except WebPushException as e:
+            falha += 1
+            codigo = getattr(e.response, "status_code", None)
+            log.warning("push falhou (%s): %s", codigo, e)
+            if codigo in (404, 410):   # inscrição morta (app removido / permissão retirada)
+                with closing(db()) as con, con:
+                    con.execute("DELETE FROM push_inscricoes WHERE endpoint = ?", (i["endpoint"],))
+        except Exception as e:      # rede etc.: tenta de novo amanhã
+            falha += 1
+            log.warning("push falhou: %s", e)
+    return ok, falha
+
+
+def _resumo_push():
+    with closing(db()) as con:
+        av = _alertas(con)
+    importantes = [a for a in av if a["nivel"] in ("alto", "medio")]
+    if not importantes:
+        return None
+    linhas = [("🔴 " if a["nivel"] == "alto" else "🟠 ") + a["texto"] for a in importantes[:4]]
+    if len(importantes) > 4:
+        linhas.append(f"+{len(importantes) - 4} outro(s)")
+    titulo = f"{len(importantes)} tarefa(s) no rebanho"
+    return titulo, "\n".join(linhas), len(importantes)
+
+
+@router.post("/api/ovelhas/push/teste")
+def push_teste():
+    r = _resumo_push()
+    titulo, corpo, n = r if r else ("Notificações ligadas", "Tudo em dia no rebanho. Os avisos chegam aqui às 7h.", 0)
+    ok, falha = _enviar_push(titulo, corpo, n)
+    if not ok and not falha:
+        raise HTTPException(400, "nenhum aparelho inscrito")
+    return {"enviados": ok, "falhas": falha}
+
+
+def _laco_push():
+    """Uma vez por dia, a partir das 7h (Brasília): se houver tarefa vermelha/laranja, avisa o celular."""
+    while True:
+        try:
+            agora = datetime.now(FUSO)
+            if agora.hour >= HORA_PUSH:
+                with closing(db()) as con:
+                    ultimo = con.execute("SELECT valor FROM config WHERE chave='push_ultimo_dia'").fetchone()
+                if not ultimo or ultimo[0] != agora.date().isoformat():
+                    r = _resumo_push()
+                    if r:
+                        _enviar_push(*r)
+                    with closing(db()) as con, con:
+                        con.execute("INSERT OR REPLACE INTO config (chave, valor) VALUES ('push_ultimo_dia', ?)", (agora.date().isoformat(),))
+        except Exception:
+            log.exception("laço de push")
+        time.sleep(600)
+
+
+def iniciar_push():
+    if os.environ.get("TAFONA_SEM_PUSH"):
+        return
+    try:
+        _vapid()
+    except Exception:
+        log.exception("não consegui criar as chaves de push")
+        return
+    threading.Thread(target=_laco_push, name="push-ovelhas", daemon=True).start()
+
+
+@router.get("/ovelhas/sw.js")
+def service_worker():
+    return FileResponse(BASE / "static" / "ovelhas-sw.js", media_type="application/javascript",
+                        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/ovelhas"})
 
 
 # ---------------------------------------------------------------- página e PWA

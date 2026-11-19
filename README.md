@@ -78,3 +78,18 @@ lancamentos(id, data, tipo despesa|receita, categoria, descricao, valor, animal_
 
 `origem` em `lancamentos` marca os automáticos (`animal:<id>`, `saida:<id>`, `sanidade:<grupo>`): não se apagam pela aba Custos.
 O banco é só leitura para quem for responder perguntas (Claude): abrir `ovelhas.db` com SQLite.
+
+## Avisos, tarefas e notificações (nov/2026)
+
+- `GET /api/ovelhas/avisos` → `{avisos, pendentes}`; cada aviso tem `chave`, `nivel` (alto/medio/baixo), `acao`, `rotulo`, `manual`.
+  `POST /api/ovelhas/avisos/estado` `{chave, acao: feito|adiar, dias}` (tabela `avisos_estado`).
+- Tarefas de manejo: tirar carneiro (≥45 dias no lote), vacina pré-parto (40 dias antes), parição, 1ª vacina do cordeiro,
+  desmame (`POST /api/ovelhas/animais/{id}/desmame`, coluna `animais.desmame`), separar borrego macho (4 meses),
+  Famacha do rebanho (dez–mar, a cada 15 dias), Famacha 4–5, sanidade vencida, genética, pesagem.
+- Bolinha vermelha = vermelhos + laranjas: no sino, na aba Painel e no ícone (`navigator.setAppBadge`).
+- **Web Push** (sem Pushover): service worker `/ovelhas/sw.js` (scope `/ovelhas`), inscrição em `push_inscricoes`,
+  chaves VAPID em `dados/ovelhas-vapid.pem` (criadas na 1ª subida; **entram no backup**). Uma thread manda o resumo
+  todo dia a partir das 07h (America/Sao_Paulo) se houver vermelho/laranja (`config.push_ultimo_dia`).
+  Precisa de saída HTTPS do container para os serviços de push (fcm.googleapis.com, web.push.apple.com,
+  updates.push.services.mozilla.com). `TAFONA_SEM_PUSH=1` desliga a thread.
+- Datas no fuso America/Sao_Paulo (o container roda em UTC; `tzdata` no requirements).

@@ -88,6 +88,15 @@
   .peso-linha small { color:var(--cinza); width:70px; text-align:right; }
   .filtro { display:flex; gap:8px; margin-bottom:10px; }
   .filtro select { flex:1; }
+  .sino { position:relative; background:transparent; border:0; color:#fff; font-size:24px; padding:6px 8px; }
+  .bolinha { position:absolute; top:0; right:0; min-width:20px; height:20px; border-radius:999px; background:#e53935; color:#fff; font-size:12px; font-weight:900; line-height:20px; padding:0 5px; display:none; box-shadow:0 0 0 2px var(--verde); }
+  .tab { position:relative; }
+  .tab .bolinha { top:2px; right:calc(50% - 22px); box-shadow:0 0 0 2px #fff; }
+  .al .tx { display:block; }
+  .al .acs { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .al .acs button { border:0; border-radius:10px; font-size:14px; font-weight:800; padding:8px 12px; background:#fff; color:#333; box-shadow:0 1px 2px #0002; }
+  .al .acs button.pri { background:var(--verde); color:#fff; }
+  .notif-status { font-size:15px; margin:0 0 8px; }
   #toast { position:fixed; left:50%; transform:translateX(-50%); bottom:110px; background:#222; color:#fff; padding:12px 18px; border-radius:12px; font-size:16px; display:none; z-index:20; max-width:90vw; text-align:center; }
   .link { color:var(--verde); font-weight:700; text-decoration:underline; background:none; border:0; font-size:15px; padding:0; }
 </style>
@@ -97,6 +106,7 @@
 <header>
   <div class="linha">
     <div class="titulo"><img src="/ovelhas/ovelha.png?v=5" alt=""><span id="tituloApp">Projeto Borrego Tafona</span></div>
+    <button class="sino" onclick="irAvisos()" aria-label="Avisos">🔔<span class="bolinha" id="bolinha"></span></button>
     <button class="btn-top" onclick="abrirNovoAnimal()">+ Animal</button>
   </div>
 </header>
@@ -106,7 +116,7 @@
   <section class="aba ativa" id="aba-painel">
     <div class="kpis" id="kpis"></div>
     <div class="card">
-      <h2>Avisos</h2>
+      <h2 id="tituloAvisos">Avisos e tarefas</h2>
       <div id="alertas"></div>
     </div>
     <div class="card">
@@ -203,6 +213,16 @@
       <div class="botoes"><button class="b p" onclick="salvarPesagens()">Salvar pesos</button></div>
     </div>
     <div class="card">
+      <h2>Notificações no celular</h2>
+      <p class="notif-status" id="notifStatus">Verificando…</p>
+      <div class="botoes">
+        <button class="b p" id="btnNotifAtivar" onclick="ativarNotificacoes()">Ativar neste celular</button>
+        <button class="b s" id="btnNotifTeste" onclick="testarNotificacao()">Mandar teste</button>
+        <button class="b s" id="btnNotifSair" onclick="desligarNotificacoes()">Desligar</button>
+      </div>
+      <p style="font-size:14px;color:var(--cinza);margin:10px 0 0">Todo dia às 7h, se houver tarefa vermelha ou laranja, chega um aviso e o ícone ganha a bolinha vermelha com o número. No iPhone, primeiro coloque o app na Tela de Início (compartilhar → Adicionar à Tela de Início) e ative abrindo por lá.</p>
+    </div>
+    <div class="card">
       <h2>Configuração</h2>
       <label>Raça padrão</label><input id="cfgRaca">
       <label>Nome do rebanho</label><input id="cfgNome">
@@ -226,6 +246,10 @@
         <li><b>Gastou ou vendeu:</b> aba <b>Custos</b>. Ração, sal e cerca entram sem animal e são rateados. Remédio de um animal só entra com o animal.</li>
         <li><b>Saiu animal:</b> abra a ficha dele e toque em <b>Dar baixa</b> (vendido, abatido ou morto). Venda vira receita.</li>
       </ul>
+      <h3>Avisos e tarefas (🔔)</h3>
+      <p>O sino no topo mostra quantas tarefas vermelhas e laranjas há. Cada aviso tem um botão que já leva para a ação (aplicar vacina, tirar o carneiro, registrar desmame, pesar). Quando você registra, o aviso some sozinho. Os de manejo que o app não tem como conferir (separar o borrego macho, borregas do carneiro) somem com <b>✓ Feito</b>. <b>Adiar 7 dias</b> esconde por uma semana.</p>
+      <p>O app avisa: tirar o carneiro após 45 dias no lote; vacinar a ovelha nos 40 dias antes do parto; parição chegando; primeira vacina do cordeiro (30 a 120 dias); desmame (60 a 90 dias); separar o borrego macho aos 4 meses; Famacha a cada 15 dias de dezembro a março; Famacha 4–5 sem vermífugo; aplicações vencidas; filhas do carneiro em idade de cruzar; pesagem atrasada.</p>
+      <p>Para receber no celular com bolinha no ícone: aba <b>Mais → Notificações no celular → Ativar</b>. Chega um aviso por dia, às 7h, só se houver tarefa vermelha ou laranja.</p>
       <h3>Brincos</h3>
       <p>Use o número que vem impresso no brinco comprado (ex.: 001, 002…). O app sugere sempre o próximo número depois do último cadastrado, mantendo o mesmo formato. Pode usar qualquer padrão, desde que não repita.</p>
       <h3>O cuidado genético</h3>
@@ -238,7 +262,7 @@
 
 <div class="rodape">
   <div class="tabs">
-    <button class="tab ativa" onclick="aba('painel',this)"><span class="ic">🏠</span>Painel</button>
+    <button class="tab ativa" id="tabPainel" onclick="aba('painel',this)"><span class="ic">🏠</span>Painel<span class="bolinha" id="bolinhaTab"></span></button>
     <button class="tab" onclick="aba('rebanho',this)"><span class="ic">🐑</span>Rebanho</button>
     <button class="tab" onclick="aba('repro',this)"><span class="ic">❤️</span>Reprodução</button>
     <button class="tab" onclick="aba('sanidade',this)"><span class="ic">💉</span>Sanidade</button>
@@ -329,6 +353,14 @@
   <div class="acoes"><button class="nao" onclick="fechar('dlgLanc')">Cancelar</button><button class="ok" onclick="salvarLancamento()">Salvar</button></div>
 </dialog>
 
+<dialog id="dlgData">
+  <h2 id="dTitulo"></h2>
+  <p id="dTexto" style="font-size:16px;margin:0"></p>
+  <label>Data</label><input type="date" id="dData">
+  <div id="dPesoBox"><label>Peso (kg, opcional)</label><input id="dKg" inputmode="decimal"></div>
+  <div class="acoes"><button class="nao" onclick="confirmarData(false)">Cancelar</button><button class="ok" onclick="confirmarData(true)">Confirmar</button></div>
+</dialog>
+
 <div id="toast"></div>
 
 <script>
@@ -361,8 +393,8 @@ function aba(nome, btn) {
   document.querySelectorAll('.aba').forEach(a => a.classList.remove('ativa'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('ativa'));
   $('aba-' + nome).classList.add('ativa'); btn.classList.add('ativa');
-  ({painel: carregarPainel, rebanho: desenharRebanho, repro: carregarRepro, sanidade: desenharSanidade, custos: carregarCustos, mais: desenharMais})[nome]();
   window.scrollTo(0, 0);
+  return ({painel: carregarPainel, rebanho: desenharRebanho, repro: carregarRepro, sanidade: desenharSanidade, custos: carregarCustos, mais: desenharMais})[nome]();
 }
 
 async function carregarAnimais() {
@@ -379,8 +411,7 @@ async function carregarPainel() {
     [c.borregas + c.borregos, 'borregos(as)'], [c.cordeiros, 'cordeiros'],
     [p.paricoes_ano.vivos, `nascidos em ${p.ano}`],
   ].map(([n, r]) => `<div class="kpi"><div class="n">${n}</div><div class="r">${r}</div></div>`).join('');
-  $('alertas').innerHTML = p.alertas.length ? p.alertas.map(a =>
-    `<div class="al ${a.nivel}" onclick="${a.animal_id ? `abrirFicha(${a.animal_id})` : ''}">${esc(a.texto)}</div>`).join('') : '<div class="vazio">Nada pendente.</div>';
+  desenharAvisos(p.alertas); atualizarBolinha(p.pendentes);
   $('proxParicoes').innerHTML = p.proximas_paricoes.length ? p.proximas_paricoes.map(x =>
     `<div class="al baixo"><b>${esc(x.brinco)}</b> entre ${fd(x.de)} e ${fd(x.ate)} <small>(carneiro ${esc(x.carneiro)})</small></div>`).join('') : '<div class="vazio">Nenhuma monta aberta.</div>';
   $('anoPainel').textContent = p.ano;
@@ -391,6 +422,60 @@ async function carregarPainel() {
     <div class="kpi"><div class="n din ${res < 0 ? 'neg' : ''}">${R$(res)}</div><div class="r">resultado</div></div>
     <div class="kpi"><div class="n neg din">${R$(p.custo_por_cabeca_ano)}</div><div class="r">gasto por cabeça</div></div>
   </div><p style="color:var(--cinza);font-size:14px;margin:10px 0 0">Desde o início: gasto ${R$(p.despesa_total)} · recebido ${R$(p.receita_total)}.</p>`;
+}
+
+// ---------------------------------------------------------------- avisos e tarefas
+function desenharAvisos(lista) {
+  E.avisos = lista;
+  $('alertas').innerHTML = lista.length ? lista.map((a, i) => `
+    <div class="al ${a.nivel}"><span class="tx">${a.nivel === 'alto' ? '🔴 ' : a.nivel === 'medio' ? '🟠 ' : ''}${esc(a.texto)}</span>
+      <div class="acs">
+        ${a.acao ? `<button class="pri" onclick="acaoAviso(${i})">${esc(a.rotulo || 'Abrir')}</button>` : ''}
+        ${a.manual ? `<button onclick="estadoAviso(${i},'feito')">✓ Feito</button>` : ''}
+        <button onclick="estadoAviso(${i},'adiar')">Adiar 7 dias</button>
+      </div></div>`).join('') : '<div class="vazio">Nada pendente. Tudo em dia. 🐑</div>';
+}
+function atualizarBolinha(n) {
+  for (const id of ['bolinha', 'bolinhaTab']) { const b = $(id); b.textContent = n > 9 ? '9+' : n; b.style.display = n ? 'block' : 'none'; }
+  try { if ('setAppBadge' in navigator) n ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } catch (_) {}
+}
+async function atualizarAvisos() { try { const j = await api('/api/ovelhas/avisos'); atualizarBolinha(j.pendentes); return j; } catch (_) {} }
+function irAvisos() { aba('painel', $('tabPainel')); setTimeout(() => $('tituloAvisos').scrollIntoView({behavior: 'smooth', block: 'start'}), 300); }
+async function estadoAviso(i, acao) {
+  const a = E.avisos[i];
+  const j = await api('/api/ovelhas/avisos/estado', {method: 'POST', body: {chave: a.chave, acao, dias: 7}});
+  desenharAvisos(j.avisos); atualizarBolinha(j.pendentes); toast(acao === 'feito' ? 'Marcado como feito' : 'Adiado por 7 dias');
+}
+async function acaoAviso(i) {
+  const a = E.avisos[i];
+  if (a.acao === 'sanidade') return irSanidade(a.ref, a.animal_id);
+  if (a.acao === 'tirar_carneiro') return fecharMonta(a.ref);
+  if (a.acao === 'paricao') { await abrirParicao(); if (a.animal_id) { $('pMae').value = a.animal_id; paiDaMonta(); } return; }
+  if (a.acao === 'desmame') return abrirDesmame(a.animal_id);
+  if (a.acao === 'pesagem') return aba('mais', document.querySelectorAll('.tab')[5]);
+  if (a.animal_id) return abrirFicha(a.animal_id);
+}
+async function irSanidade(tipo, animalId) {
+  if (tipo) { E.sanTipo = tipo; E.famacha = null; }
+  await aba('sanidade', document.querySelectorAll('.tab')[3]);
+  if (animalId) { const c = $('chipsSanAnimais').querySelector(`[data-id="${animalId}"]`); if (c) c.classList.add('sel'); }
+  else selTodos('chipsSanAnimais');
+  $('famachaBox').style.display = E.sanTipo === 'Famacha' ? 'block' : 'none';
+}
+
+// ---- diálogo de data (desmame, tirar carneiro)
+function pedirData(titulo, texto, comPeso) {
+  return new Promise(res => {
+    $('dTitulo').textContent = titulo; $('dTexto').textContent = texto || '';
+    $('dData').value = hoje(); $('dKg').value = ''; $('dPesoBox').style.display = comPeso ? 'block' : 'none';
+    E._resData = res; $('dlgData').showModal();
+  });
+}
+function confirmarData(ok) { fechar('dlgData'); E._resData(ok ? {data: $('dData').value, kg: $('dKg').value} : null); }
+async function abrirDesmame(id) {
+  const a = E.animais.find(x => x.id === id) || {brinco: ''};
+  const r = await pedirData('Registrar desmame', `Cordeiro ${a.brinco}: separado da mãe em`, true); if (!r) return;
+  await api(`/api/ovelhas/animais/${id}/desmame`, {method: 'POST', body: r}); toast('Desmame registrado'); carregarPainel();
 }
 
 // ---------------------------------------------------------------- rebanho
@@ -458,6 +543,7 @@ async function abrirFicha(id) {
   $('fichaConteudo').innerHTML = `
     <h2>${a.sexo === 'M' ? '🐏' : '🐑'} ${rotulo(a)} ${a.status !== 'ativo' ? `<span class="pill off">${a.status}${a.saida ? ' ' + fd(a.saida) : ''}</span>` : ''}</h2>
     <p style="margin:0;color:var(--cinza)">${sexoIc(a)} ${a.raca || ''} · ${a.idade ? a.idade : 'idade ?'}${a.nascimento ? ' (' + fd(a.nascimento) + ')' : ''} · ${a.origem === 'nascido' ? 'nascido aqui' : 'comprado' + (a.entrada ? ' em ' + fd(a.entrada) : '')}${a.valor_compra ? ' por ' + R$(a.valor_compra) : ''}</p>
+    ${a.origem === 'nascido' ? `<p style="margin:6px 0 0;font-size:15px">${a.desmame ? '🍼 Desmamado em ' + fd(a.desmame) : `<button class="b s" onclick="fechar('dlgFicha');abrirDesmame(${a.id})">Registrar desmame</button>`}</p>` : ''}
     ${a.obs ? `<p style="font-size:15px">${esc(a.obs)}</p>` : ''}
     <div class="botoes"><button class="b s" onclick="editarAnimal(${a.id})">Editar</button>
       ${a.status === 'ativo' ? `<button class="b s" onclick="abrirBaixa(${a.id})">Dar baixa</button>` : `<button class="b s" onclick="reativar(${a.id})">Voltar para ativo</button>`}
@@ -524,9 +610,9 @@ function abrirMonta() {
 }
 async function salvarMonta() {
   try { await api('/api/ovelhas/montas', {method: 'POST', body: {carneiro_id: E.carneiroSel, ovelhas: selecionados('chipsFemeas'), inicio: $('mInicio').value, fim: $('mFim').value, obs: $('mObs').value}});
-    fechar('dlgMonta'); toast('Monta registrada'); carregarRepro(); } catch (e) { erroEm('mErro', e.message); }
+    fechar('dlgMonta'); toast('Monta registrada'); carregarRepro(); atualizarAvisos(); } catch (e) { erroEm('mErro', e.message); }
 }
-async function fecharMonta(id) { const f = prompt('Data em que o carneiro saiu (AAAA-MM-DD)', hoje()); if (!f) return; await api('/api/ovelhas/montas', {method: 'POST', body: {id, acao: 'fechar', fim: f}}); carregarRepro(); }
+async function fecharMonta(id) { const r = await pedirData('Tirar o carneiro', 'O carneiro saiu do lote em', false); if (!r) return; await api('/api/ovelhas/montas', {method: 'POST', body: {id, acao: 'fechar', fim: r.data}}); toast('Carneiro fora do lote'); carregarRepro(); atualizarAvisos(); if ($('aba-painel').classList.contains('ativa')) carregarPainel(); }
 async function excluirMonta(id) { if (!confirm('Apagar essa monta?')) return; try { await api('/api/ovelhas/montas', {method: 'POST', body: {id, acao: 'excluir'}}); carregarRepro(); } catch (e) { toast(e.message); } }
 
 let nCord = 0;
@@ -540,7 +626,7 @@ function addCordeiro() {
 E.sugestaoBrinco = seq => { const m = (E.proxBrinco || '').match(/^(.*?)(\d+)$/); return m ? m[1] + String(+m[2] + seq).padStart(m[2].length, '0') : ''; };
 function togSexoCord(btn) { btn.parentElement.querySelectorAll('.cSexo').forEach(c => c.classList.remove('sel')); btn.classList.add('sel'); }
 async function abrirParicao() {
-  await carregarAnimais(); E.proxBrinco = (await api('/api/ovelhas/proximo-brinco')).brinco;
+  await carregarAnimais(); E.montasCache = (await api('/api/ovelhas/montas')).montas; E.proxBrinco = (await api('/api/ovelhas/proximo-brinco')).brinco;
   const fem = E.ativos.filter(a => a.sexo === 'F');
   $('pMae').innerHTML = fem.map(a => `<option value="${a.id}">${rotulo(a)}</option>`).join('');
   $('pPai').innerHTML = '<option value="">Desconhecido</option>' + E.animais.filter(a => a.sexo === 'M').map(a => `<option value="${a.id}">${rotulo(a)}</option>`).join('');
@@ -554,7 +640,7 @@ function paiDaMonta() {
 async function salvarParicao() {
   const cordeiros = [...$('pCordeiros').children].map(d => ({brinco: d.querySelector('.cBrinco').value, sexo: d.querySelector('.cSexo.sel').dataset.s, kg: d.querySelector('.cKg').value}));
   try { await api('/api/ovelhas/paricoes', {method: 'POST', body: {mae_id: +$('pMae').value, pai_id: $('pPai').value || null, monta_id: E.montaDaParicao, data: $('pData').value, cordeiros, vivos: cordeiros.length, mortos: +$('pMortos').value || 0, obs: $('pObs').value}});
-    fechar('dlgParicao'); toast(`Parição registrada: ${cordeiros.length} cordeiro(s)`); carregarRepro(); } catch (e) { erroEm('pErro', e.message); }
+    fechar('dlgParicao'); toast(`Parição registrada: ${cordeiros.length} cordeiro(s)`); carregarRepro(); atualizarAvisos(); } catch (e) { erroEm('pErro', e.message); }
 }
 
 // ---------------------------------------------------------------- sanidade
@@ -573,7 +659,7 @@ async function salvarSanidade() {
   const ids = selecionados('chipsSanAnimais'); if (!ids.length) return toast('Escolha os animais');
   if (E.sanTipo === 'Famacha' && !E.famacha) return toast('Escolha a nota Famacha');
   try { const r = await api('/api/ovelhas/sanidade', {method: 'POST', body: {animais: ids, tipo: E.sanTipo, data: $('sanData').value, repete_dias: $('sanRepete').value || null, produto: $('sanProduto').value, dose: $('sanDose').value, custo_total: $('sanCusto').value, famacha: E.sanTipo === 'Famacha' ? E.famacha : null}});
-    toast(`Registrado em ${r.aplicados} animal(is)`); $('sanCusto').value = ''; selNenhum('chipsSanAnimais'); desenharSanidade(); } catch (e) { toast(e.message); }
+    toast(`Registrado em ${r.aplicados} animal(is)`); atualizarAvisos(); $('sanCusto').value = ''; selNenhum('chipsSanAnimais'); desenharSanidade(); } catch (e) { toast(e.message); }
 }
 
 // ---------------------------------------------------------------- custos
@@ -612,11 +698,43 @@ async function desenharMais() {
   if (!$('pesData').value) $('pesData').value = hoje();
   $('pesLinhas').innerHTML = E.ativos.map(a => `<div class="peso-linha"><b>${sexoIc(a)} ${esc(a.brinco)}</b><small>${a.ultimo_peso ? a.ultimo_peso + ' kg' : ''}</small><input class="pesKg" data-id="${a.id}" inputmode="decimal" placeholder="kg"></div>`).join('') || '<div class="vazio">Sem animais ativos.</div>';
   $('cfgRaca').value = E.config.raca_padrao || ''; $('cfgNome').value = E.config.nome_rebanho || '';
+  statusNotificacoes();
 }
+// ---------------------------------------------------------------- notificações (Web Push)
+const b64 = s => { const p = '='.repeat((4 - s.length % 4) % 4); const r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...r].map(c => c.charCodeAt(0))); };
+async function registrarSW() { if (!('serviceWorker' in navigator)) return null; try { return await navigator.serviceWorker.register('/ovelhas/sw.js', {scope: '/ovelhas'}); } catch (_) { return null; } }
+async function statusNotificacoes() {
+  const st = $('notifStatus'); const sup = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const ios = /iPhone|iPad/.test(navigator.userAgent), instalado = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  let inscrito = false;
+  if (sup) { const reg = await navigator.serviceWorker.getRegistration('/ovelhas'); inscrito = !!(reg && await reg.pushManager.getSubscription()); }
+  $('btnNotifAtivar').style.display = inscrito ? 'none' : ''; $('btnNotifTeste').style.display = inscrito ? '' : 'none'; $('btnNotifSair').style.display = inscrito ? '' : 'none';
+  if (!sup) st.textContent = ios && !instalado ? '⚠️ No iPhone, as notificações só funcionam com o app na Tela de Início. Adicione e abra por lá.' : '⚠️ Este navegador não aceita notificações.';
+  else if (Notification.permission === 'denied') st.textContent = '⛔ Notificações bloqueadas para este site. Libere nas configurações do celular.';
+  else st.textContent = inscrito ? '✅ Ligadas neste celular.' : 'Desligadas neste celular.';
+}
+async function ativarNotificacoes() {
+  try {
+    const perm = await Notification.requestPermission(); if (perm !== 'granted') { toast('Permissão negada'); return statusNotificacoes(); }
+    const reg = await registrarSW(); await navigator.serviceWorker.ready;
+    const {chave} = await api('/api/ovelhas/push/chave');
+    const sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64(chave)});
+    await api('/api/ovelhas/push/inscrever', {method: 'POST', body: {inscricao: sub.toJSON(), aparelho: navigator.userAgent}});
+    toast('Notificações ligadas'); atualizarAvisos();
+  } catch (e) { toast('Não consegui ligar: ' + e.message); }
+  statusNotificacoes();
+}
+async function testarNotificacao() { try { const r = await api('/api/ovelhas/push/teste', {method: 'POST', body: {}}); toast(`Teste enviado (${r.enviados})`); } catch (e) { toast(e.message); } }
+async function desligarNotificacoes() {
+  const reg = await navigator.serviceWorker.getRegistration('/ovelhas'); const sub = reg && await reg.pushManager.getSubscription();
+  if (sub) { await api('/api/ovelhas/push/sair', {method: 'POST', body: {endpoint: sub.endpoint}}); await sub.unsubscribe(); }
+  toast('Notificações desligadas'); statusNotificacoes();
+}
+
 async function salvarPesagens() {
   const itens = [...document.querySelectorAll('.pesKg')].filter(i => i.value).map(i => ({animal_id: +i.dataset.id, kg: i.value}));
   if (!itens.length) return toast('Nenhum peso digitado');
-  try { const r = await api('/api/ovelhas/pesagens', {method: 'POST', body: {data: $('pesData').value, itens}}); toast(`${r.n} peso(s) salvo(s)`); desenharMais(); } catch (e) { toast(e.message); }
+  try { const r = await api('/api/ovelhas/pesagens', {method: 'POST', body: {data: $('pesData').value, itens}}); toast(`${r.n} peso(s) salvo(s)`); desenharMais(); atualizarAvisos(); } catch (e) { toast(e.message); }
 }
 async function salvarConfig() { E.config = await api('/api/ovelhas/config', {method: 'POST', body: {raca_padrao: $('cfgRaca').value, nome_rebanho: $('cfgNome').value}}); $('tituloApp').textContent = E.config.nome_rebanho || 'Projeto Borrego Tafona'; toast('Salvo'); }
 
@@ -626,6 +744,8 @@ async function salvarConfig() { E.config = await api('/api/ovelhas/config', {met
   $('tituloApp').textContent = E.config.nome_rebanho || 'Projeto Borrego Tafona';
   await carregarAnimais();
   carregarPainel();
+  registrarSW();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) atualizarAvisos(); });
 })();
 </script>
 </body>

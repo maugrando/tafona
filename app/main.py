@@ -74,6 +74,7 @@ def criar_banco():
 def _inicio():
     criar_banco()
     ovelhas.criar_banco()
+    ovelhas.iniciar_push()
 
 
 # ---------------------------------------------------------------- páginas e arquivos
