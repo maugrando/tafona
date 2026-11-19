@@ -365,6 +365,13 @@ async def salvar_animal(req: Request):
                 con.execute(f"UPDATE animais SET {sets} WHERE id = ?", (*campos.values(), aid))
             except sqlite3.IntegrityError:
                 raise HTTPException(400, "já existe um animal com esse brinco")
+            # a despesa da compra acompanha o que estiver no cadastro (valor, data, origem)
+            a = _animal_por_id(con, aid)
+            con.execute("DELETE FROM lancamentos WHERE origem = ?", (f"animal:{aid}",))
+            if a["origem"] == "comprado" and a["valor_compra"]:
+                con.execute(
+                    "INSERT INTO lancamentos (data, tipo, categoria, descricao, valor, animal_id, origem) VALUES (?,?,?,?,?,?,?)",
+                    (a["entrada"] or hoje(), "despesa", "Animais", f"Compra do animal {a['brinco']}", a["valor_compra"], aid, f"animal:{aid}"))
         else:
             if not campos["brinco"]:
                 raise HTTPException(400, "brinco em branco")
