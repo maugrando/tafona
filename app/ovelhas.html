@@ -227,7 +227,7 @@
         <li><b>Saiu animal:</b> abra a ficha dele e toque em <b>Dar baixa</b> (vendido, abatido ou morto). Venda vira receita.</li>
       </ul>
       <h3>Brincos</h3>
-      <p>Padrão sugerido: ano com dois dígitos, traço e sequência (26-001, 26-002…). O app sugere o próximo. Pode usar outro padrão, desde que não repita.</p>
+      <p>Use o número que vem impresso no brinco comprado (ex.: 001, 002…). O app sugere sempre o próximo número depois do último cadastrado, mantendo o mesmo formato. Pode usar qualquer padrão, desde que não repita.</p>
       <h3>O cuidado genético</h3>
       <p>Com um carneiro só, as filhas dele não podem cruzar com ele. Quando a primeira filha chegar perto dos 7 meses, o painel avisa: é hora de comprar ou trocar o carneiro, ou separar as borregas. O app bloqueia pai × filha, mãe × filho, irmãos e meio-irmãos, e marca primos como atenção.</p>
       <h3>Perguntar ao Claude</h3>
@@ -537,7 +537,7 @@ function addCordeiro() {
     <div style="display:flex;gap:6px"><button class="chip cSexo sel" data-s="F" onclick="togSexoCord(this)">♀</button><button class="chip cSexo" data-s="M" onclick="togSexoCord(this)">♂</button><input class="cKg" placeholder="kg" inputmode="decimal" style="width:80px"><button class="chip" onclick="this.parentElement.parentElement.remove()">✕</button></div>`;
   $('pCordeiros').appendChild(div);
 }
-E.sugestaoBrinco = seq => { const [ano, n] = (E.proxBrinco || '00-000').split('-'); return `${ano}-${String(+n + seq).padStart(3, '0')}`; };
+E.sugestaoBrinco = seq => { const m = (E.proxBrinco || '').match(/^(.*?)(\d+)$/); return m ? m[1] + String(+m[2] + seq).padStart(m[2].length, '0') : ''; };
 function togSexoCord(btn) { btn.parentElement.querySelectorAll('.cSexo').forEach(c => c.classList.remove('sel')); btn.classList.add('sel'); }
 async function abrirParicao() {
   await carregarAnimais(); E.proxBrinco = (await api('/api/ovelhas/proximo-brinco')).brinco;

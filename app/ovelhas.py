@@ -8,6 +8,7 @@ Sem login no app: o controle de acesso é feito pela infraestrutura, na frente d
 import csv
 import io
 import os
+import re
 import sqlite3
 import zipfile
 from contextlib import closing
@@ -320,17 +321,26 @@ def animal(aid: int):
 
 @router.get("/api/ovelhas/proximo-brinco")
 def proximo_brinco():
-    """Sugere o próximo brinco no padrão AA-NNN (ano com 2 dígitos + sequência)."""
-    ano = date.today().strftime("%y")
+    """Sugere o próximo brinco seguindo o padrão do último cadastrado.
+
+    Brinco comprado já numerado (001, 002…, ou PBT-001…): soma 1 ao número do último,
+    mantendo o prefixo e os zeros. Sem nenhum animal ainda: sugere 001."""
     with closing(db()) as con:
-        usados = [r["brinco"] for r in con.execute("SELECT brinco FROM animais WHERE brinco LIKE ?", (f"{ano}-%",))]
-    seq = 0
-    for b in usados:
-        try:
-            seq = max(seq, int(b.split("-", 1)[1]))
-        except (IndexError, ValueError):
-            pass
-    return {"brinco": f"{ano}-{seq + 1:03d}"}
+        ultimo = con.execute("SELECT brinco FROM animais ORDER BY id DESC LIMIT 1").fetchone()
+        if not ultimo:
+            return {"brinco": "001"}
+        m = re.match(r"^(.*?)(\d+)$", ultimo["brinco"])
+        if not m:
+            return {"brinco": ""}
+        prefixo, n = m.group(1), m.group(2)
+        # maior número já usado com o mesmo prefixo (o último cadastrado pode não ser o maior)
+        maior = int(n)
+        for r in con.execute("SELECT brinco FROM animais WHERE brinco LIKE ?", (prefixo + "%",)):
+            mm = re.match(r"^" + re.escape(prefixo) + r"(\d+)$", r["brinco"])
+            if mm:
+                maior = max(maior, int(mm.group(1)))
+        candidato = f"{prefixo}{maior + 1:0{len(n)}d}"
+        return {"brinco": candidato}
 
 
 @router.post("/api/ovelhas/animais")
