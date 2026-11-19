@@ -1,4 +1,4 @@
-"""PBT · Projeto Borrego Tafona — controle do rebanho ovino da fazenda.
+"""Projeto Borrego Tafona (PBT) — controle do rebanho ovino da fazenda.
 
 Rebanho, genealogia (quem pode cruzar com quem), monta a campo, parições,
 sanidade, pesagens, custos e painel. Banco SQLite próprio em /dados/ovelhas.db.
@@ -129,10 +129,10 @@ def criar_banco():
             CREATE INDEX IF NOT EXISTS ix_lan_data ON lancamentos(data);
             """
         )
-        for chave, valor in [("raca_padrao", "Hampshire Down"), ("nome_rebanho", "PBT · Projeto Borrego Tafona")]:
+        for chave, valor in [("raca_padrao", "Hampshire Down"), ("nome_rebanho", "Projeto Borrego Tafona")]:
             con.execute("INSERT OR IGNORE INTO config (chave, valor) VALUES (?, ?)", (chave, valor))
         # nome antigo de fábrica -> nome do projeto (não mexe se o Mau já tiver trocado)
-        con.execute("UPDATE config SET valor = 'PBT · Projeto Borrego Tafona' WHERE chave = 'nome_rebanho' AND valor = 'Ovelhas · Tafona'")
+        con.execute("UPDATE config SET valor = 'Projeto Borrego Tafona' WHERE chave = 'nome_rebanho' AND valor IN ('Ovelhas · Tafona', 'PBT · Projeto Borrego Tafona')")
 
 
 # ---------------------------------------------------------------- utilidades

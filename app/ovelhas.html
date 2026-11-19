@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>PBT · Projeto Borrego Tafona</title>
+<title>Projeto Borrego Tafona</title>
 <link rel="manifest" href="/ovelhas/manifest.json">
-<link rel="icon" href="/ovelhas/ovelha.png?v=4">
-<link rel="apple-touch-icon" href="/ovelhas/ovelha.png?v=4">
-<meta name="theme-color" content="#2f4a2a">
+<link rel="icon" href="/ovelhas/ovelha.png?v=5">
+<link rel="apple-touch-icon" href="/ovelhas/ovelha.png?v=5">
+<meta name="theme-color" content="#2a422d">
 <style>
-  :root { --verde:#2f4a2a; --verde2:#4b6b3f; --creme:#f3efe4; --carne:#9b2c1f; --cinza:#6b6b6b; --borda:#d8d2c2; --ok:#2e7d32; --at:#c77700; --nao:#b3261e; }
+  :root { --verde:#2a422d; --verde2:#4b6b3f; --creme:#f3efe4; --carne:#9b2c1f; --cinza:#6b6b6b; --borda:#d8d2c2; --ok:#2e7d32; --at:#c77700; --nao:#b3261e; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { margin:0; font-family: system-ui, -apple-system, Roboto, sans-serif; background: var(--creme); color:#1d1d1d; padding-bottom: 92px; }
   header { position: sticky; top:0; z-index:5; background: var(--verde); color:#fff; padding: 10px 14px 12px; box-shadow: 0 2px 8px #0003; }
@@ -96,7 +96,7 @@
 
 <header>
   <div class="linha">
-    <div class="titulo"><img src="/ovelhas/ovelha.png?v=4" alt=""><span id="tituloApp">PBT · Projeto Borrego Tafona</span></div>
+    <div class="titulo"><img src="/ovelhas/ovelha.png?v=5" alt=""><span id="tituloApp">Projeto Borrego Tafona</span></div>
     <button class="btn-top" onclick="abrirNovoAnimal()">+ Animal</button>
   </div>
 </header>
@@ -618,12 +618,12 @@ async function salvarPesagens() {
   if (!itens.length) return toast('Nenhum peso digitado');
   try { const r = await api('/api/ovelhas/pesagens', {method: 'POST', body: {data: $('pesData').value, itens}}); toast(`${r.n} peso(s) salvo(s)`); desenharMais(); } catch (e) { toast(e.message); }
 }
-async function salvarConfig() { E.config = await api('/api/ovelhas/config', {method: 'POST', body: {raca_padrao: $('cfgRaca').value, nome_rebanho: $('cfgNome').value}}); $('tituloApp').textContent = E.config.nome_rebanho || 'PBT · Projeto Borrego Tafona'; toast('Salvo'); }
+async function salvarConfig() { E.config = await api('/api/ovelhas/config', {method: 'POST', body: {raca_padrao: $('cfgRaca').value, nome_rebanho: $('cfgNome').value}}); $('tituloApp').textContent = E.config.nome_rebanho || 'Projeto Borrego Tafona'; toast('Salvo'); }
 
 // ---------------------------------------------------------------- início
 (async () => {
   E.config = await api('/api/ovelhas/config');
-  $('tituloApp').textContent = E.config.nome_rebanho || 'PBT · Projeto Borrego Tafona';
+  $('tituloApp').textContent = E.config.nome_rebanho || 'Projeto Borrego Tafona';
   await carregarAnimais();
   carregarPainel();
 })();

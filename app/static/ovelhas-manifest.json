@@ -1,14 +1,14 @@
 {
-  "name": "PBT · Projeto Borrego Tafona",
-  "short_name": "PBT",
+  "name": "Projeto Borrego Tafona",
+  "short_name": "Borrego Tafona",
   "start_url": "/ovelhas",
   "scope": "/ovelhas",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#f3efe4",
-  "theme_color": "#2f4a2a",
+  "theme_color": "#2a422d",
   "icons": [
-    {"src": "/ovelhas/ovelha.png?v=4", "sizes": "180x180", "type": "image/png", "purpose": "any"},
-    {"src": "/ovelhas/ovelha-512.png?v=4", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+    {"src": "/ovelhas/ovelha.png?v=5", "sizes": "180x180", "type": "image/png", "purpose": "any"},
+    {"src": "/ovelhas/ovelha-512.png?v=5", "sizes": "512x512", "type": "image/png", "purpose": "any"}
   ]
 }
