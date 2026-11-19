@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Ovelhas · Tafona</title>
+<title>PBT · Projeto Borrego Tafona</title>
 <link rel="manifest" href="/ovelhas/manifest.json">
 <link rel="icon" href="/ovelhas/ovelha.png">
 <link rel="apple-touch-icon" href="/ovelhas/ovelha.png">
@@ -96,7 +96,7 @@
 
 <header>
   <div class="linha">
-    <div class="titulo"><img src="/ovelhas/ovelha.png" alt=""><span id="tituloApp">Ovelhas · Tafona</span></div>
+    <div class="titulo"><img src="/ovelhas/ovelha.png" alt=""><span id="tituloApp">PBT · Projeto Borrego Tafona</span></div>
     <button class="btn-top" onclick="abrirNovoAnimal()">+ Animal</button>
   </div>
 </header>
@@ -618,12 +618,12 @@ async function salvarPesagens() {
   if (!itens.length) return toast('Nenhum peso digitado');
   try { const r = await api('/api/ovelhas/pesagens', {method: 'POST', body: {data: $('pesData').value, itens}}); toast(`${r.n} peso(s) salvo(s)`); desenharMais(); } catch (e) { toast(e.message); }
 }
-async function salvarConfig() { E.config = await api('/api/ovelhas/config', {method: 'POST', body: {raca_padrao: $('cfgRaca').value, nome_rebanho: $('cfgNome').value}}); $('tituloApp').textContent = E.config.nome_rebanho || 'Ovelhas · Tafona'; toast('Salvo'); }
+async function salvarConfig() { E.config = await api('/api/ovelhas/config', {method: 'POST', body: {raca_padrao: $('cfgRaca').value, nome_rebanho: $('cfgNome').value}}); $('tituloApp').textContent = E.config.nome_rebanho || 'PBT · Projeto Borrego Tafona'; toast('Salvo'); }
 
 // ---------------------------------------------------------------- início
 (async () => {
   E.config = await api('/api/ovelhas/config');
-  $('tituloApp').textContent = E.config.nome_rebanho || 'Ovelhas · Tafona';
+  $('tituloApp').textContent = E.config.nome_rebanho || 'PBT · Projeto Borrego Tafona';
   await carregarAnimais();
   carregarPainel();
 })();

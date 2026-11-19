@@ -41,7 +41,7 @@ O backup precisa incluir `dados/`.
 
 ---
 
-# Tafona · Ovelhas
+# PBT · Projeto Borrego Tafona (módulo Ovelhas)
 
 Controle do rebanho ovino, no mesmo container, em **https://tafona.maugrando.com.br/ovelhas**.
 Banco **SQLite** próprio em `./dados/ovelhas.db` (entra no mesmo backup). Sem login no app, como o Rótulos.
